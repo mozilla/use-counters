@@ -2,13 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Use Counters</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Use Counter Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.0/css/bulma.min.css">
+    <style>
+        .is-blue {
+        background-color: #3273dc;
+        color: white;
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        Use Counter Dashboard
-    </div>
-    <script src="main.js"></script>
+    <section class="section">
+        <div class="container">
+        <h1 class="title has-text-centered is-blue">Use Counter Dashboard</h1>
+        <form id="queryForm">
+            <div class="field">
+                <label class="label" for="version_major">Version Number:</label>
+                <div class="control">
+                    <input class="input" type="text" id="version_major" name="version_major">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label" for="country">Country:</label>
+                <div class="control">
+                    <input class="input" type="text" id="country" name="country">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label" for="platform">Platform:</label>
+                <div class="control">
+                    <input class="input" type="text" id="platform" name="platform">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label" for="metric_name">Use Counter Name:</label>
+                <div class="control">
+                    <input class="input" type="text" id="metric_name" name="metric_name">
+                </div>
+            </div>
+            <div class="field">
+                <div class="control">
+                    <button class="button is-blue" type="submit">Query</button>
+                </div>
+            </div>
+        </form>
+        <div id="data-container" class="table-container">
+            <!-- Table will be inserted here by JavaScript -->
+        </div>
+        </div>
+    </section>
+    <script>
+        document.getElementById('queryForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const queryData = Object.fromEntries(formData.entries());
+            const queryString = new URLSearchParams(queryData).toString();
+            const response = await fetch(`https://us-central1-linh-moz.cloudfunctions.net/function-1?${queryString}`, {
+                method: 'GET',
+            });
+            const data = await response.json();
+            console.log(data)
+            const table = generateTable(data);
+            document.getElementById('data-container').innerHTML = table;
+        });
+        
+        function generateTable(data) {
+        let table = `<table class="table is-fullwidth is-striped is-hoverable">
+                    <thead class="is-blue">
+                        <tr>`;
+        // Assuming data is an array of objects, use the keys of the first object for column headers
+        if(data.length > 0) {
+        Object.keys(data[0]).forEach(key => {
+            table += `<th>${key}</th>`;
+        });
+        table += `</tr>
+                </thead>
+                <tbody>`;
+        // Populate the table rows with the data
+        data.forEach(row => {
+            table += `<tr>`;
+            Object.values(row).forEach(value => {
+                // Check if the value is an object and has a 'value' property
+                if (typeof value === 'object' && value !== null && value.value) {
+                    table += `<td>${value.value}</td>`; // Use the 'value' property for the date
+                } else {
+                    table += `<td>${value}</td>`; // Use the value directly
+                }
+            });
+            table += `</tr>`;
+        });
+        } else {
+        // If no data, just setup headers manually (or could be skipped)
+        table += `<th>Data</th></tr></thead><tbody><tr><td>No data available</td></tr>`;
+        }
+        table += `</tbody>
+            </table>`;
+        return table;
+        }
+    </script>
 </body>
 </html>
