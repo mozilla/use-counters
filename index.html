@@ -10,96 +10,165 @@
         background-color: #3273dc;
         color: white;
         }
+        .is-light-orange {
+            background-color: #FFA07A; /* Light Salmon as an example of light orange */
+            color: white;
+        }
+        /* Inspired by Stripe Header Styles */
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Clean, modern font */
+        }
+        .dashboard-header {
+            background-color: #fff; /* Clean white background */
+            box-shadow: 0 2px 3px rgba(0,0,0,0.06); /* Subtle shadow for depth */
+            padding: 20px 0; /* Adequate padding for breathing space */
+            text-align: center; /* Center align the content for simplicity */
+        }
+        .dashboard-header .title {
+            margin: 0; /* Remove margin for tight spacing */
+            color: #32325d; /* Dark blue for strong contrast */
+            font-size: 28px; /* Slightly larger for emphasis */
+            font-weight: 400; /* Normal weight for a clean look */
+        }
+        .dashboard-header .subtitle {
+            color: #6b7c93; /* Soft grey for less emphasis */
+            font-size: 18px; /* Balanced size for readability */
+            margin-top: 8px; /* Space between title and subtitle */
+        }
+        .mozilla-logo {
+            height: 40px; /* Slightly larger logo for brand emphasis */
+            vertical-align: middle; /* Align with text */
+            margin-right: 15px; /* Space between logo and text */
+        }
+        /* Hover effect for interactive feel */
+        .dashboard-header:hover {
+            box-shadow: 0 4px 6px rgba(50,50,93,0.11), 0 1px 3px rgba(0,0,0,0.08); /* Deeper shadow on hover */
+            transition: box-shadow 0.15s ease; /* Smooth transition for shadow */
+        }
     </style>
 </head>
 <body>
-    <section class="section">
-        <div class="container">
-        <h1 class="title has-text-centered is-blue">Use Counter Dashboard</h1>
+    <section>
+        <header class="dashboard-header">
+            <img src="images/mozilla-icon.png" alt="Mozilla Icon" class="mozilla-logo">
+            <p class="title">Use Counter Dashboard</p>
+            <br />
+            <p class="subtitle">Web platform feature usage statistics of Firefox Desktop and Android.</p>
+        </header>
+    </section>
+
+    <div class="container" style="text-align: center; padding-top: 20px;">
         <form id="queryForm">
-            <div class="field">
-                <label class="label" for="version_major">Version Number:</label>
+            <div class="field is-grouped is-grouped-centered" style="justify-content: center;">
                 <div class="control">
-                    <input class="input" type="text" id="version_major" name="version_major">
+                    <div class="select">
+                        <select id="version_major" name="version_major">
+                            <!-- Generating version numbers from 100 to 122 -->
+                            <script>
+                                for (let i = 100; i <= 122; i++) {
+                                    document.write(`<option value="${i}" ${i === 121 ? 'selected' : ''}>${i}</option>`);
+                                }
+                            </script>
+                        </select>
+                    </div>
+                </div>
+                <div class="control">
+                    <div class="select">
+                        <select id="country" name="country">
+                            <option value="US" selected>US</option>
+                            <option value="DE">DE</option>
+                            <option value="CANADA">CANADA</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="control">
+                    <div class="select">
+                        <select id="platform" name="platform">
+                            <option value="Firefox">Firefox</option>
+                            <option value="Fenix" selected>Fenix</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- <div class="control">
+                    <div class="select">
+                        <select id="sort_order" name="sort_order">
+                            <option value="DESC">Descending</option>
+                            <option value="ASC">Ascending</option>
+                        </select>
+                    </div>
+                </div> -->
+            </div>
+            <div class="field">
+                <div class="control" style="width: 75%; margin: auto;">
+                    <input class="input" id="metric_name" name="metric_name" type="text" placeholder="Search for a use counter" style="text-align: center;">
                 </div>
             </div>
             <div class="field">
-                <label class="label" for="country">Country:</label>
                 <div class="control">
-                    <input class="input" type="text" id="country" name="country">
-                </div>
-            </div>
-            <div class="field">
-                <label class="label" for="platform">Platform:</label>
-                <div class="control">
-                    <input class="input" type="text" id="platform" name="platform">
-                </div>
-            </div>
-            <div class="field">
-                <label class="label" for="metric_name">Use Counter Name:</label>
-                <div class="control">
-                    <input class="input" type="text" id="metric_name" name="metric_name">
-                </div>
-            </div>
-            <div class="field">
-                <div class="control">
-                    <button class="button is-blue" type="submit">Query</button>
+                    <button class="button is-link" type="submit">Query</button>
                 </div>
             </div>
         </form>
+    </div>
         <div id="data-container" class="table-container">
             <!-- Table will be inserted here by JavaScript -->
         </div>
         </div>
-    </section>
-    <script>
-        document.getElementById('queryForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const queryData = Object.fromEntries(formData.entries());
-            const queryString = new URLSearchParams(queryData).toString();
-            const response = await fetch(`https://us-central1-linh-moz.cloudfunctions.net/function-1?${queryString}`, {
-                method: 'GET',
-            });
-            const data = await response.json();
-            console.log(data)
-            const table = generateTable(data);
-            document.getElementById('data-container').innerHTML = table;
-        });
-        
-        function generateTable(data) {
-        let table = `<table class="table is-fullwidth is-striped is-hoverable">
-                    <thead class="is-blue">
-                        <tr>`;
-        // Assuming data is an array of objects, use the keys of the first object for column headers
-        if(data.length > 0) {
-        Object.keys(data[0]).forEach(key => {
-            table += `<th>${key}</th>`;
-        });
-        table += `</tr>
-                </thead>
-                <tbody>`;
-        // Populate the table rows with the data
-        data.forEach(row => {
-            table += `<tr>`;
-            Object.values(row).forEach(value => {
-                // Check if the value is an object and has a 'value' property
-                if (typeof value === 'object' && value !== null && value.value) {
-                    table += `<td>${value.value}</td>`; // Use the 'value' property for the date
-                } else {
-                    table += `<td>${value}</td>`; // Use the value directly
+        <script>
+            document.getElementById('queryForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const queryData = Object.fromEntries(formData.entries());
+                const queryString = new URLSearchParams(queryData).toString();
+                try {
+                    const response = await fetch(`https://us-central1-linh-moz.cloudfunctions.net/function-1?${queryString}`, {
+                        method: 'GET',
+                    });
+                    if (!response.ok) {
+                        // If the server response is not OK, throw an error with the status
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    console.log(data);
+                    const table = generateTable(data);
+                    document.getElementById('data-container').innerHTML = table;
+                } catch (error) {
+                    // Log any errors that occur during the fetch operation
+                    console.error("Error fetching data: ", error);
+                    // Optionally, update the UI to inform the user that an error occurred
+                    document.getElementById('data-container').innerHTML = `<p>Error loading data. Please try again later.</p>`;
                 }
             });
-            table += `</tr>`;
-        });
-        } else {
-        // If no data, just setup headers manually (or could be skipped)
-        table += `<th>Data</th></tr></thead><tbody><tr><td>No data available</td></tr>`;
-        }
-        table += `</tbody>
-            </table>`;
-        return table;
-        }
-    </script>
+            
+            function generateTable(data) {
+                let table = `<table class="table is-fullwidth is-striped is-hoverable">
+                                <thead class="is-blue">
+                                    <tr>`;
+                if(data.length > 0) {
+                    Object.keys(data[0]).forEach(key => {
+                        table += `<th>${key}</th>`;
+                    });
+                    table += `</tr>
+                            </thead>
+                            <tbody>`;
+                    data.forEach(row => {
+                        table += `<tr>`;
+                        Object.values(row).forEach(value => {
+                            if (typeof value === 'object' && value !== null && value.value) {
+                                table += `<td>${value.value}</td>`;
+                            } else {
+                                table += `<td>${value}</td>`;
+                            }
+                        });
+                        table += `</tr>`;
+                    });
+                } else {
+                    table += `<th>Data</th></tr></thead><tbody><tr><td>No data available</td></tr>`;
+                }
+                table += `</tbody>
+                        </table>`;
+                return table;
+            }
+        </script>
 </body>
 </html>
