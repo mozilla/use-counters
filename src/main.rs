@@ -8,6 +8,12 @@ use clap::{Parser, ValueEnum};
 
 use crate::aggregate::AggregateMap;
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug, ValueEnum)]
+pub enum ProcessingMode {
+    Memory,
+    Streaming,
+}
+
 #[derive(Parser)]
 #[command(
     name = "uc-fetch",
@@ -34,6 +40,11 @@ struct Args {
     #[arg(short, long, default_value_t = 8)]
     jobs: usize,
 
+    /// How is data processed for aggregation. Streaming uses significantly less
+    /// memory but is slower.
+    #[arg(short, long, default_value = "memory")]
+    mode: ProcessingMode,
+
     /// Only download the first N files per dataset (useful for testing).
     #[arg(long)]
     max_files: Option<usize>,
@@ -51,19 +62,15 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     let client = reqwest::Client::builder()
-        .user_agent("use-counters-viz/0.1 (https://github.com/mozilla)")
+        .user_agent("use-counters/0.1 (https://github.com/emilio/use-counters)")
         .build()?;
 
     let mut aggregate = AggregateMap::default();
     if !args.input.is_empty() {
         for input in &args.input {
-            let records = fetch::parse_file(input).await?;
-            eprintln!(
-                "[{}] {} raw records fetched",
-                input.display(),
-                records.len()
-            );
-            aggregate::aggregate_into(&records, &mut aggregate);
+            let file = std::fs::File::open(input)?;
+            let records = aggregate::aggregate_file_into(file, args.mode, &mut aggregate)?;
+            eprintln!("[{}] {} records aggregated", input.display(), records,);
         }
     } else {
         let datasets: Vec<fetch::Dataset> = match args.dataset {
@@ -78,15 +85,16 @@ async fn main() -> Result<()> {
                 args.jobs,
                 args.max_files,
                 args.cache_dir.as_deref(),
+                args.mode,
                 &mut aggregate,
             )
             .await?;
         }
     }
 
-    eprintln!("{} weekly entries produced", aggregate.len());
-
     let aggregated = aggregate.into_entries();
+
+    eprintln!("{} weekly entries produced", aggregated.len());
     let json = serde_json::to_string_pretty(&aggregated)?;
 
     match args.output {

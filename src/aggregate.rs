@@ -1,9 +1,13 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::BufRead};
 
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
+use serde_json::{StreamDeserializer, de::IoRead};
 
-use crate::fetch::{Platform, SourceRecord};
+use crate::{
+    ProcessingMode,
+    fetch::{Platform, SourceRecord},
+};
 
 #[derive(Debug, Default)]
 pub struct AggregateMap(HashMap<AggKey, Accum>);
@@ -46,47 +50,42 @@ pub struct AggregatedEntry {
 }
 
 /// Aggregate a flat list of records into weekly entries.
-pub fn aggregate_into(records: &[SourceRecord], result: &mut AggregateMap) {
-    for record in records {
-        let date = match NaiveDate::parse_from_str(&record.submission_date, "%Y-%m-%d") {
-            Ok(d) => d,
-            Err(_) => {
-                eprintln!(
-                    "Warning: unparseable date {:?}, skipping record {:?}",
-                    record.submission_date, record
-                );
-                continue;
-            }
-        };
-
-        if record.cnt < 0 {
+pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> bool {
+    let date = match NaiveDate::parse_from_str(&record.submission_date, "%Y-%m-%d") {
+        Ok(d) => d,
+        Err(_) => {
             eprintln!(
-                "Warning: negative count {}, skipping record {:?}",
-                record.cnt, record
+                "Warning: unparseable date {:?}, skipping record {:?}",
+                record.submission_date, record
             );
-            continue;
+            return false;
         }
+    };
 
-        let iso = date.iso_week();
-        let key = AggKey {
-            metric: record.metric.clone(),
-            platform: record.platform.clone(),
-            version_major: record.version_major.clone(),
-            iso_year: iso.year(),
-            iso_week: iso.week(),
-        };
-
-        let entry = result.0.entry(key).or_default();
-        entry.cnt += record.cnt as u64;
-        entry.denominator += record.denominator();
+    if record.cnt < 0 {
+        eprintln!(
+            "Warning: negative count {}, skipping record {:?}",
+            record.cnt, record
+        );
+        return false;
     }
+
+    let iso = date.iso_week();
+    let key = AggKey {
+        metric: record.metric.clone(),
+        platform: record.platform.clone(),
+        version_major: record.version_major.clone(),
+        iso_year: iso.year(),
+        iso_week: iso.week(),
+    };
+
+    let entry = result.0.entry(key).or_default();
+    entry.cnt += record.cnt as u64;
+    entry.denominator += record.denominator();
+    true
 }
 
 impl AggregateMap {
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     /// Turns this into a json array.
     pub fn into_entries(self) -> Vec<AggregatedEntry> {
         self.0
@@ -107,4 +106,45 @@ impl AggregateMap {
             })
             .collect()
     }
+}
+
+pub fn aggregate_file_into(
+    file: std::fs::File,
+    processing_mode: ProcessingMode,
+    result: &mut AggregateMap,
+) -> anyhow::Result<usize> {
+    if processing_mode == ProcessingMode::Memory {
+        let reader = std::io::BufReader::new(file);
+        let records: Vec<SourceRecord> = serde_json::from_reader(reader)?;
+        let mut count = 0;
+        for record in &records {
+            if aggregate_record(record, result) {
+                count += 1;
+            }
+        }
+        return Ok(count);
+    }
+    let mut reader = std::io::BufReader::new(file);
+    let mut count = 0;
+    // Skip over the initial `[`
+    reader.seek_relative(1)?;
+    while let Some(r) = StreamDeserializer::new(IoRead::new(&mut reader)).next() {
+        match r {
+            Ok(record) => {
+                if aggregate_record(&record, result) {
+                    count += 1;
+                }
+                // Go to the next comma or EOF (most likely just skip one character).
+                reader.skip_until(b',')?;
+            }
+            Err(e) => {
+                if e.is_eof() {
+                    break;
+                } else {
+                    return Err(e.into());
+                }
+            }
+        }
+    }
+    Ok(count)
 }

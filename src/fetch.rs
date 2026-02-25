@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use futures::stream::{self, StreamExt};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::path::Path;
+use std::{io::Write, path::Path};
+use tempfile::NamedTempFile;
 
-use crate::aggregate::{AggregateMap, aggregate_into};
+use crate::ProcessingMode;
+use crate::aggregate::{self, AggregateMap};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Dataset {
@@ -33,7 +35,7 @@ where
     T: std::str::FromStr + Deserialize<'de>,
     <T as std::str::FromStr>::Err: std::fmt::Display,
 {
-    <&str>::deserialize(deserializer)?
+    <std::borrow::Cow<'_, str>>::deserialize(deserializer)?
         .parse::<T>()
         .map_err(serde::de::Error::custom)
 }
@@ -114,6 +116,7 @@ pub async fn fetch_and_aggregate_dataset(
     jobs: usize,
     max_files: Option<usize>,
     cache_dir: Option<&Path>,
+    processing_mode: ProcessingMode,
     aggregate: &mut AggregateMap,
 ) -> Result<()> {
     let url = dataset.files_url();
@@ -121,6 +124,7 @@ pub async fn fetch_and_aggregate_dataset(
 
     let cache_dir = cache_dir.map(|c| c.join(dataset.name()));
     let cache_dir = cache_dir.as_ref();
+
     if let Some(cache_dir) = cache_dir {
         tokio::fs::create_dir_all(cache_dir).await?;
     }
@@ -144,67 +148,66 @@ pub async fn fetch_and_aggregate_dataset(
     let total = file_urls.len();
     let mut stream = stream::iter(file_urls.iter().enumerate().map(|(i, url)| async move {
         eprintln!("[{}] {}/{} start ({})", dataset.name(), i + 1, total, url);
-        let cache_path = cache_dir.map(|c| {
+        let cache_path = cache_dir.map(|cache_dir| {
             let basename_start = url.rfind("/").map_or(0, |i| i + 1);
-            c.join(&url[basename_start..])
+            cache_dir.join(&url[basename_start..])
         });
         if let Some(ref cache_path) = cache_path {
-            if let Ok(bytes) = tokio::fs::read(&cache_path).await {
-                eprintln!("[{}] {}/{} loaded from cache", dataset.name(), i + 1, total);
-                return anyhow::Ok((i, bytes::Bytes::from(bytes)));
-            }
-        }
-        let bytes = client
-            .get(url)
-            .send()
-            .await?
-            .bytes()
-            .await
-            .with_context(|| format!("Failed to fetch file {i}/{total}: {url}"))?;
-        if let Some(cache_path) = cache_path {
-            if let Err(e) = tokio::fs::write(&cache_path, &bytes).await {
+            if let Ok(f) = std::fs::File::open(cache_path) {
                 eprintln!(
-                    "[{}] {}/{} failed to write cache ({}): {}",
-                    dataset.name(),
-                    i + 1,
-                    total,
-                    cache_path.display(),
-                    e
-                );
-            } else {
-                eprintln!(
-                    "[{}] {}/{} saved to cache ({})",
+                    "[{}] {}/{} loaded from cache {}",
                     dataset.name(),
                     i + 1,
                     total,
                     cache_path.display()
                 );
+                return anyhow::Ok((i, f));
             }
         }
-        anyhow::Ok((i, bytes))
+        let mut temp_file = NamedTempFile::new()?;
+        eprintln!(
+            "[{}] {}/{} download into {}",
+            dataset.name(),
+            i + 1,
+            total,
+            temp_file.path().display()
+        );
+        let response = client.get(url).send().await?;
+        let mut response_bytes = response.bytes_stream();
+        while let Some(result) = response_bytes.next().await {
+            temp_file.write_all(&result?)?;
+        }
+
+        eprintln!("[{}] {}/{} download finished", dataset.name(), i + 1, total);
+
+        let file = match cache_path {
+            Some(ref p) => {
+                let f = temp_file.persist(p)?;
+                eprintln!(
+                    "[{}] {}/{} persisted into {}",
+                    dataset.name(),
+                    i + 1,
+                    total,
+                    p.display()
+                );
+                f
+            }
+            None => temp_file.into_file(),
+        };
+        anyhow::Ok((i, file))
     }))
     .buffer_unordered(jobs);
 
     while let Some(result) = stream.next().await {
-        let (i, bytes) = result?;
-        let records = parse_records(&bytes)?;
+        let (i, file) = result?;
+        let records = aggregate::aggregate_file_into(file, processing_mode, aggregate)?;
         eprintln!(
             "[{}] {}/{} done ({} records)",
             dataset.name(),
             i + 1,
             total,
-            records.len()
+            records,
         );
-        aggregate_into(&records, aggregate);
     }
     Ok(())
-}
-
-pub async fn parse_file(path: &Path) -> Result<Vec<SourceRecord>> {
-    let bytes = tokio::fs::read(path).await?;
-    parse_records(&bytes)
-}
-
-fn parse_records(bytes: &[u8]) -> Result<Vec<SourceRecord>> {
-    serde_json::from_slice(bytes).context("Failed to parse records JSON")
 }
