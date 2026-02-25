@@ -157,15 +157,15 @@ pub async fn fetch_and_aggregate_dataset(
 
     while let Some(result) = stream.next().await {
         let (i, bytes) = result?;
-        let recs = parse_records(&bytes)?;
+        let records = parse_records(&bytes)?;
         eprintln!(
             "[{}] {}/{} done ({} records)",
             dataset.name(),
             i + 1,
             total,
-            recs.len()
+            records.len()
         );
-        aggregate_into(&recs, aggregate);
+        aggregate_into(&records, aggregate);
     }
     Ok(())
 }

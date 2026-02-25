@@ -31,7 +31,7 @@ struct Args {
     cache_dir: Option<PathBuf>,
 
     /// Number of files to download concurrently.
-    #[arg(long, default_value_t = 8)]
+    #[arg(short, long, default_value_t = 8)]
     jobs: usize,
 
     /// Only download the first N files per dataset (useful for testing).
