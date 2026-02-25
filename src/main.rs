@@ -26,6 +26,10 @@ struct Args {
     #[arg(long, short)]
     output: Option<PathBuf>,
 
+    /// Cache files here in the {dataset}-{filename} form.
+    #[arg(long, short)]
+    cache_dir: Option<PathBuf>,
+
     /// Number of files to download concurrently.
     #[arg(long, default_value_t = 8)]
     jobs: usize,
@@ -73,6 +77,7 @@ async fn main() -> Result<()> {
                 dataset,
                 args.jobs,
                 args.max_files,
+                args.cache_dir.as_deref(),
                 &mut aggregate,
             )
             .await?;

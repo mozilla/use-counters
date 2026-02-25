@@ -90,10 +90,17 @@ pub async fn fetch_and_aggregate_dataset(
     dataset: Dataset,
     jobs: usize,
     max_files: Option<usize>,
+    cache_dir: Option<&Path>,
     aggregate: &mut AggregateMap,
 ) -> Result<()> {
     let url = dataset.files_url();
     eprintln!("[{}] Fetching file list from {}", dataset.name(), url);
+
+    let cache_dir = cache_dir.map(|c| c.join(dataset.name()));
+    let cache_dir = cache_dir.as_ref();
+    if let Some(cache_dir) = cache_dir {
+        tokio::fs::create_dir_all(cache_dir).await?;
+    }
 
     let file_urls: Vec<String> = client
         .get(url)
@@ -114,10 +121,39 @@ pub async fn fetch_and_aggregate_dataset(
     let total = file_urls.len();
     let mut stream = stream::iter(file_urls.iter().enumerate().map(|(i, url)| async move {
         eprintln!("[{}] {}/{} start ({})", dataset.name(), i + 1, total, url);
-        let bytes = client.get(url).send().await?.bytes().await
+        let cache_path = cache_dir.map(|c| {
+            let basename_start = url.rfind("/").unwrap_or(0);
+            c.join(&url[basename_start..])
+        });
+        if let Some(ref cache_path) = cache_path {
+            if let Ok(bytes) = tokio::fs::read(&cache_path).await {
+                eprintln!("[{}] {}/{} loaded from cache", dataset.name(), i + 1, total);
+                return anyhow::Ok((i, bytes::Bytes::from(bytes)));
+            }
+        }
+        let bytes = client
+            .get(url)
+            .send()
+            .await?
+            .bytes()
+            .await
             .with_context(|| format!("Failed to fetch file {i}/{total}: {url}"))?;
+        if let Some(cache_path) = cache_path {
+            if let Err(e) = tokio::fs::write(&cache_path, &bytes).await {
+                eprintln!(
+                    "[{}] {}/{} failed to write cache: {}",
+                    dataset.name(),
+                    i + 1,
+                    total,
+                    e
+                );
+            } else {
+                eprintln!("[{}] {}/{} saved to cache", dataset.name(), i + 1, total);
+            }
+        }
         anyhow::Ok((i, bytes))
-    })).buffer_unordered(jobs);
+    }))
+    .buffer_unordered(jobs);
 
     while let Some(result) = stream.next().await {
         let (i, bytes) = result?;
