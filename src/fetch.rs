@@ -22,6 +22,13 @@ impl Dataset {
         }
     }
 
+    pub fn last_updated_url(self) -> String {
+        let name = self.name();
+        format!(
+            "https://public-data.telemetry.mozilla.org/api/v1/tables/{name}_derived/{name}_use_counters/v2/last_updated"
+        )
+    }
+
     pub fn files_url(self) -> String {
         let name = self.name();
         format!(
@@ -197,7 +204,10 @@ pub async fn fetch_and_aggregate_dataset(
     cache_dir: Option<&Path>,
     processing_mode: ProcessingMode,
     aggregate: &mut AggregateMap,
-) -> Result<()> {
+) -> Result<String> {
+    let last_updated_url = dataset.last_updated_url();
+    let last_updated: String = client.get(last_updated_url).send().await?.json().await?;
+
     let url = dataset.files_url();
     eprintln!("[{}] Fetching file list from {}", dataset.name(), url);
 
@@ -252,5 +262,5 @@ pub async fn fetch_and_aggregate_dataset(
         let partial = partial??;
         aggregate.merge_with(partial)
     }
-    Ok(())
+    Ok(last_updated)
 }

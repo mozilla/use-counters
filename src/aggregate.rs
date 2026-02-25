@@ -113,11 +113,14 @@ pub struct MetricOverview {
 }
 
 #[derive(Debug, Default, Serialize)]
-pub struct Overview(BTreeMap<String, MetricOverview>);
+pub struct Overview {
+    last_updated: Vec<String>,
+    all_metrics: BTreeMap<String, MetricOverview>,
+}
 
 impl Overview {
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.all_metrics.len()
     }
 }
 
@@ -128,10 +131,15 @@ pub struct Output {
 }
 
 impl AggregateMap {
-    pub fn to_output(&self) -> Output {
+    pub fn to_output(&self, last_updated: Vec<String>) -> Output {
         let mut out = Output::default();
+        out.overview.last_updated = last_updated;
         for (key, acc) in &self.0 {
-            let entry = out.overview.0.entry(key.metric.clone()).or_default();
+            let entry = out
+                .overview
+                .all_metrics
+                .entry(key.metric.clone())
+                .or_default();
             entry.cnt += acc.cnt;
             entry.denominator += acc.denominator;
             out.per_metric

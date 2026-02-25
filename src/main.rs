@@ -65,6 +65,8 @@ async fn main() -> Result<()> {
         .user_agent("use-counters/0.1 (https://github.com/emilio/use-counters)")
         .build()?;
 
+    let mut last_updated = vec![];
+
     let mut aggregate = AggregateMap::default();
     if !args.input.is_empty() {
         for input in &args.input {
@@ -79,20 +81,22 @@ async fn main() -> Result<()> {
             DatasetArg::All => vec![fetch::Dataset::Fenix, fetch::Dataset::Desktop],
         };
         for dataset in datasets {
-            fetch::fetch_and_aggregate_dataset(
-                &client,
-                dataset,
-                args.jobs,
-                args.max_files,
-                args.cache_dir.as_deref(),
-                args.mode,
-                &mut aggregate,
-            )
-            .await?;
+            last_updated.push(
+                fetch::fetch_and_aggregate_dataset(
+                    &client,
+                    dataset,
+                    args.jobs,
+                    args.max_files,
+                    args.cache_dir.as_deref(),
+                    args.mode,
+                    &mut aggregate,
+                )
+                .await?,
+            );
         }
     }
 
-    let output = aggregate.to_output();
+    let output = aggregate.to_output(last_updated);
 
     eprintln!("{} metrics processed", output.overview.len());
     tokio::fs::create_dir_all(&args.output).await?;

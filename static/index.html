@@ -572,9 +572,9 @@
             "css.doc": "CSS",
             page: "Custom",
             doc: "Custom",
-            "worker.dedicated": "Worker · Dedicated",
-            "worker.service": "Worker · Service",
-            "worker.shared": "Worker · Shared",
+            "worker.dedicated": "DedicatedWorker",
+            "worker.service": "ServiceWorker",
+            "worker.shared": "SharedWorker",
             "deprecated_ops.page": "Deprecated",
             "deprecated_ops.doc": "Deprecated",
         };
@@ -643,6 +643,9 @@
             const res = await fetch("data/overview.json");
             if (!res.ok) throw new Error("HTTP " + res.status);
             const { last_updated, all_metrics } = await res.json();
+            document.getElementById("last-updated").textContent = Array.from(
+                new Set(last_updated),
+            ).join(", ");
             counters = Object.entries(all_metrics).map(
                 ([name, { cnt, denominator }]) => {
                     const cat = parseCat(name);
