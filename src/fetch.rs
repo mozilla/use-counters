@@ -103,6 +103,7 @@ impl SourceRecord {
         } else if m.contains(".worker.service.") {
             self.use_counter_service_workers_destroyed
         } else {
+            assert!(m.contains(".doc."), "Unexpected metric name format: {}", m);
             self.use_counter_content_documents_destroyed
         }
     }

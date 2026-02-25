@@ -51,6 +51,10 @@ pub struct AggregatedEntry {
 
 /// Aggregate a flat list of records into weekly entries.
 pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> bool {
+    if record.metric.contains(".doc.") {
+        // Skip document-level metrics, which are not as useful as page metrics.
+        return false;
+    }
     let date = match NaiveDate::parse_from_str(&record.submission_date, "%Y-%m-%d") {
         Ok(d) => d,
         Err(_) => {
