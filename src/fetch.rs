@@ -155,9 +155,9 @@ async fn perform_download(
     temp_file.flush()?;
 
     eprintln!("[{}] {}/{} download finished", dataset.name(), i + 1, total);
-    let file = match cache_path {
+    let mut file = match cache_path {
         Some(ref p) => match temp_file.persist(p) {
-            Ok(mut f) => {
+            Ok(f) => {
                 eprintln!(
                     "[{}] {}/{} persisted into {}",
                     dataset.name(),
@@ -165,7 +165,6 @@ async fn perform_download(
                     total,
                     p.display()
                 );
-                f.seek(std::io::SeekFrom::Start(0))?;
                 f
             }
             Err(e) => {
@@ -183,7 +182,7 @@ async fn perform_download(
         },
         None => temp_file.into_file(),
     };
-
+    file.seek(std::io::SeekFrom::Start(0))?;
     Ok(file)
 }
 
