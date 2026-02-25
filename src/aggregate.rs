@@ -3,6 +3,7 @@ use std::{collections::HashMap, io::BufRead};
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
 use serde_json::{StreamDeserializer, de::IoRead};
+use std::collections::BTreeMap;
 
 use crate::{
     ProcessingMode,
@@ -37,7 +38,6 @@ pub struct Accum {
 /// One aggregated data point: a single metric × platform × ISO week.
 #[derive(Debug, Serialize)]
 pub struct AggregatedEntry {
-    pub metric: String,
     pub platform: Platform,
     pub version_major: u32,
     /// Monday of the ISO week, formatted as "YYYY-MM-DD".
@@ -102,26 +102,53 @@ pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> boo
     true
 }
 
+#[derive(Debug, Serialize, Default)]
+pub struct MetricOverview {
+    cnt: u64,
+    denominator: u64,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct Overview(BTreeMap<String, MetricOverview>);
+
+impl Overview {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+#[derive(Default)]
+pub struct Output {
+    pub overview: Overview,
+    pub per_metric: HashMap<String, Vec<AggregatedEntry>>,
+}
+
 impl AggregateMap {
-    /// Turns this into a json array.
-    pub fn into_entries(self) -> Vec<AggregatedEntry> {
-        self.0
-            .into_iter()
-            .map(|(key, acc)| {
-                // Reconstruct the Monday of this ISO week.
-                let monday =
-                    NaiveDate::from_isoywd_opt(key.iso_year, key.iso_week, chrono::Weekday::Mon)
-                        .expect("valid ISO year+week from parsed date");
-                AggregatedEntry {
-                    week_start: monday.format("%Y-%m-%d").to_string(),
-                    metric: key.metric,
-                    platform: key.platform,
+    pub fn to_output(&self) -> Output {
+        let mut out = Output::default();
+        for (key, acc) in &self.0 {
+            let entry = out.overview.0.entry(key.metric.clone()).or_default();
+            entry.cnt += acc.cnt;
+            entry.denominator += acc.denominator;
+            out.per_metric
+                .entry(key.metric.clone())
+                .or_default()
+                .push(AggregatedEntry {
+                    week_start: NaiveDate::from_isoywd_opt(
+                        key.iso_year,
+                        key.iso_week,
+                        chrono::Weekday::Mon,
+                    )
+                    .expect("valid ISO year+week from parsed date")
+                    .format("%Y-%m-%d")
+                    .to_string(),
+                    platform: key.platform.clone(),
                     version_major: key.version_major,
                     cnt: acc.cnt,
                     denominator: acc.denominator,
-                }
-            })
-            .collect()
+                });
+        }
+        out
     }
 
     pub fn merge_with(&mut self, other: AggregateMap) {

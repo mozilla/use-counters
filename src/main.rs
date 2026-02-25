@@ -28,9 +28,9 @@ struct Args {
     #[arg(long, short)]
     input: Vec<PathBuf>,
 
-    /// Write output JSON to FILE instead of stdout.
+    /// Write to output directory.
     #[arg(long, short)]
-    output: Option<PathBuf>,
+    output: PathBuf,
 
     /// Cache files here in the {dataset}-{filename} form.
     #[arg(long, short)]
@@ -92,17 +92,19 @@ async fn main() -> Result<()> {
         }
     }
 
-    let aggregated = aggregate.into_entries();
+    let output = aggregate.to_output();
 
-    eprintln!("{} weekly entries produced", aggregated.len());
-    let json = serde_json::to_string_pretty(&aggregated)?;
+    eprintln!("{} metrics processed", output.overview.len());
+    tokio::fs::create_dir_all(&args.output).await?;
 
-    match args.output {
-        Some(path) => {
-            std::fs::write(&path, &json)?;
-            eprintln!("Output written to {}", path.display());
-        }
-        None => println!("{json}"),
+    let overview = args.output.join("overview.json");
+    std::fs::write(&overview, serde_json::to_string_pretty(&output.overview)?)?;
+    eprintln!("Overview written to {}", overview.display());
+
+    for (metric, entries) in &output.per_metric {
+        let path = args.output.join(format!("{}.json", metric));
+        std::fs::write(&path, serde_json::to_string_pretty(entries)?)?;
+        eprintln!("{} entries written to {}", entries.len(), path.display());
     }
 
     Ok(())
