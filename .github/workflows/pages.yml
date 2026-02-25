@@ -5,6 +5,10 @@ on:
   push:
     branches: ["main"]
 
+  schedule:
+    # Runs every day at 12:00 PM UTC
+    - cron: 0 12 * * *
+
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
