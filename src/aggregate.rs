@@ -64,8 +64,25 @@ pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> boo
 
     if record.cnt < 0 {
         eprintln!(
-            "Warning: negative count {}, skipping record {:?}",
+            "warning: negative count {}, skipping record {:?}",
             record.cnt, record
+        );
+        return false;
+    }
+
+    let denom = record.denominator();
+    if denom < 0 {
+        eprintln!(
+            "warning: negative denominator {}, skipping record {:?}",
+            denom, record
+        );
+        return false;
+    }
+
+    if denom < record.cnt {
+        eprintln!(
+            "warning: smaller denominator {} than count {}, skipping record {:?}",
+            denom, record.cnt, record
         );
         return false;
     }
@@ -81,7 +98,7 @@ pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> boo
 
     let entry = result.0.entry(key).or_default();
     entry.cnt += record.cnt as u64;
-    entry.denominator += record.denominator();
+    entry.denominator += denom as u64;
     true
 }
 
@@ -105,6 +122,14 @@ impl AggregateMap {
                 }
             })
             .collect()
+    }
+
+    pub fn merge_with(&mut self, other: AggregateMap) {
+        for (key, acc) in other.0 {
+            let entry = self.0.entry(key).or_default();
+            entry.cnt += acc.cnt;
+            entry.denominator += acc.denominator;
+        }
     }
 }
 

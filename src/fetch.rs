@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use futures::stream::{self, StreamExt};
 use serde::{Deserialize, Deserializer, Serialize};
+use std::io::Seek;
 use std::{io::Write, path::Path};
 use tempfile::NamedTempFile;
 
@@ -60,16 +61,16 @@ pub struct SourceRecord {
     /// Total content documents destroyed in this (date, version, country, platform) segment.
     /// Denominator for doc-level use counters.
     #[serde(deserialize_with = "deserialize_from_str")]
-    pub use_counter_content_documents_destroyed: u64,
+    pub use_counter_content_documents_destroyed: i64,
     /// Total top-level documents destroyed. Denominator for page-level use counters.
     #[serde(deserialize_with = "deserialize_from_str")]
-    pub use_counter_top_level_content_documents_destroyed: u64,
+    pub use_counter_top_level_content_documents_destroyed: i64,
     #[serde(deserialize_with = "deserialize_from_str")]
-    pub use_counter_service_workers_destroyed: u64,
+    pub use_counter_service_workers_destroyed: i64,
     #[serde(deserialize_with = "deserialize_from_str")]
-    pub use_counter_shared_workers_destroyed: u64,
+    pub use_counter_shared_workers_destroyed: i64,
     #[serde(deserialize_with = "deserialize_from_str")]
-    pub use_counter_dedicated_workers_destroyed: u64,
+    pub use_counter_dedicated_workers_destroyed: i64,
     /// The use counter name, e.g. "use.counter.css.doc.css_moz_animation_name".
     pub metric: String,
     /// Number of times this counter was hit in this segment (as a string).
@@ -91,7 +92,7 @@ impl SourceRecord {
     /// - `use.counter.worker.shared.*`        → shared_workers_destroyed
     /// - `use.counter.worker.service.*`       → service_workers_destroyed
     /// - everything else (doc-level counters) → content_documents_destroyed
-    pub fn denominator(&self) -> u64 {
+    pub fn denominator(&self) -> i64 {
         let m = &self.metric;
         if m.contains(".page.") {
             self.use_counter_top_level_content_documents_destroyed
@@ -105,6 +106,84 @@ impl SourceRecord {
             self.use_counter_content_documents_destroyed
         }
     }
+}
+
+async fn perform_download(
+    client: &reqwest::Client,
+    dataset: Dataset,
+    i: usize,
+    total: usize,
+    url: &str,
+    cache_dir: Option<&Path>,
+) -> Result<std::fs::File> {
+    let cache_path = cache_dir.map(|cache_dir| {
+        let basename_start = url.rfind("/").map_or(0, |i| i + 1);
+        cache_dir.join(&url[basename_start..])
+    });
+    if let Some(ref cache_path) = cache_path {
+        if let Ok(f) = std::fs::File::open(cache_path) {
+            eprintln!(
+                "[{}] {}/{} loaded from cache {}",
+                dataset.name(),
+                i + 1,
+                total,
+                cache_path.display()
+            );
+            return Ok(f);
+        }
+    }
+    let mut temp_file = {
+        if let Some(cache_dir) = cache_dir {
+            NamedTempFile::new_in(cache_dir)
+        } else {
+            NamedTempFile::new()
+        }
+    }?;
+    eprintln!(
+        "[{}] {}/{} download into {}",
+        dataset.name(),
+        i + 1,
+        total,
+        temp_file.path().display()
+    );
+    let response = client.get(url).send().await?;
+    let mut response_bytes = response.bytes_stream();
+    while let Some(result) = response_bytes.next().await {
+        temp_file.write_all(&result?)?;
+    }
+    temp_file.flush()?;
+
+    eprintln!("[{}] {}/{} download finished", dataset.name(), i + 1, total);
+    let file = match cache_path {
+        Some(ref p) => match temp_file.persist(p) {
+            Ok(mut f) => {
+                eprintln!(
+                    "[{}] {}/{} persisted into {}",
+                    dataset.name(),
+                    i + 1,
+                    total,
+                    p.display()
+                );
+                f.seek(std::io::SeekFrom::Start(0))?;
+                f
+            }
+            Err(e) => {
+                eprintln!(
+                    "[{}] {}/{} failed to persist into {} ({}), using temp file: {}",
+                    dataset.name(),
+                    i + 1,
+                    total,
+                    p.display(),
+                    e.error,
+                    e.file.path().display()
+                );
+                e.file.into_file()
+            }
+        },
+        None => temp_file.into_file(),
+    };
+
+    Ok(file)
 }
 
 /// Download all records for the given dataset, using an optional local cache directory.
@@ -123,7 +202,7 @@ pub async fn fetch_and_aggregate_dataset(
     eprintln!("[{}] Fetching file list from {}", dataset.name(), url);
 
     let cache_dir = cache_dir.map(|c| c.join(dataset.name()));
-    let cache_dir = cache_dir.as_ref();
+    let cache_dir = cache_dir.as_deref();
 
     if let Some(cache_dir) = cache_dir {
         tokio::fs::create_dir_all(cache_dir).await?;
@@ -148,66 +227,30 @@ pub async fn fetch_and_aggregate_dataset(
     let total = file_urls.len();
     let mut stream = stream::iter(file_urls.iter().enumerate().map(|(i, url)| async move {
         eprintln!("[{}] {}/{} start ({})", dataset.name(), i + 1, total, url);
-        let cache_path = cache_dir.map(|cache_dir| {
-            let basename_start = url.rfind("/").map_or(0, |i| i + 1);
-            cache_dir.join(&url[basename_start..])
-        });
-        if let Some(ref cache_path) = cache_path {
-            if let Ok(f) = std::fs::File::open(cache_path) {
-                eprintln!(
-                    "[{}] {}/{} loaded from cache {}",
-                    dataset.name(),
-                    i + 1,
-                    total,
-                    cache_path.display()
-                );
-                return anyhow::Ok((i, f));
-            }
-        }
-        let mut temp_file = NamedTempFile::new()?;
-        eprintln!(
-            "[{}] {}/{} download into {}",
-            dataset.name(),
-            i + 1,
-            total,
-            temp_file.path().display()
-        );
-        let response = client.get(url).send().await?;
-        let mut response_bytes = response.bytes_stream();
-        while let Some(result) = response_bytes.next().await {
-            temp_file.write_all(&result?)?;
-        }
-
-        eprintln!("[{}] {}/{} download finished", dataset.name(), i + 1, total);
-
-        let file = match cache_path {
-            Some(ref p) => {
-                let f = temp_file.persist(p)?;
-                eprintln!(
-                    "[{}] {}/{} persisted into {}",
-                    dataset.name(),
-                    i + 1,
-                    total,
-                    p.display()
-                );
-                f
-            }
-            None => temp_file.into_file(),
-        };
-        anyhow::Ok((i, file))
+        let file = perform_download(client, dataset, i, total, url, cache_dir).await?;
+        let aggregate: Result<AggregateMap> = tokio::task::spawn_blocking(move || {
+            let mut aggregate = AggregateMap::default();
+            let records = aggregate::aggregate_file_into(file, processing_mode, &mut aggregate)
+                .with_context(|| {
+                    format!("[{}] Error aggregating {}/{}", dataset.name(), i + 1, total)
+                })?;
+            eprintln!(
+                "[{}] {}/{} done ({} records)",
+                dataset.name(),
+                i + 1,
+                total,
+                records,
+            );
+            Ok(aggregate)
+        })
+        .await?;
+        anyhow::Ok(aggregate)
     }))
     .buffer_unordered(jobs);
 
-    while let Some(result) = stream.next().await {
-        let (i, file) = result?;
-        let records = aggregate::aggregate_file_into(file, processing_mode, aggregate)?;
-        eprintln!(
-            "[{}] {}/{} done ({} records)",
-            dataset.name(),
-            i + 1,
-            total,
-            records,
-        );
+    while let Some(partial) = stream.next().await {
+        let partial = partial??;
+        aggregate.merge_with(partial)
     }
     Ok(())
 }
