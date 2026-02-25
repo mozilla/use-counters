@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chrono::{Datelike, NaiveDate};
 use serde::Serialize;
 
-use crate::fetch::SourceRecord;
+use crate::fetch::{Platform, SourceRecord};
 
 #[derive(Debug, Default)]
 pub struct AggregateMap(HashMap<AggKey, Accum>);
@@ -15,8 +15,8 @@ pub struct AggregateMap(HashMap<AggKey, Accum>);
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct AggKey {
     metric: String,
-    platform: String,
-    version_major: String,
+    platform: Platform,
+    version_major: u32,
     /// ISO week-year (can differ from calendar year near year boundaries).
     iso_year: i32,
     iso_week: u32,
@@ -32,10 +32,10 @@ pub struct Accum {
 
 /// One aggregated data point: a single metric × platform × ISO week.
 #[derive(Debug, Serialize)]
-pub struct WeeklyEntry {
+pub struct AggregatedEntry {
     pub metric: String,
-    pub platform: String,
-    pub version_major: String,
+    pub platform: Platform,
+    pub version_major: u32,
     /// Monday of the ISO week, formatted as "YYYY-MM-DD".
     pub week_start: String,
     /// Sum of hit counts across all countries and versions in this week.
@@ -52,12 +52,20 @@ pub fn aggregate_into(records: &[SourceRecord], result: &mut AggregateMap) {
             Ok(d) => d,
             Err(_) => {
                 eprintln!(
-                    "Warning: unparseable date {:?}, skipping",
-                    record.submission_date
+                    "Warning: unparseable date {:?}, skipping record {:?}",
+                    record.submission_date, record
                 );
                 continue;
             }
         };
+
+        if record.cnt < 0 {
+            eprintln!(
+                "Warning: negative count {}, skipping record {:?}",
+                record.cnt, record
+            );
+            continue;
+        }
 
         let iso = date.iso_week();
         let key = AggKey {
@@ -69,8 +77,8 @@ pub fn aggregate_into(records: &[SourceRecord], result: &mut AggregateMap) {
         };
 
         let entry = result.0.entry(key).or_default();
-        entry.cnt += record.cnt_u64();
-        entry.denominator += record.denominator_u64();
+        entry.cnt += record.cnt as u64;
+        entry.denominator += record.denominator();
     }
 }
 
@@ -80,7 +88,7 @@ impl AggregateMap {
     }
 
     /// Turns this into a json array.
-    pub fn into_entries(self) -> Vec<WeeklyEntry> {
+    pub fn into_entries(self) -> Vec<AggregatedEntry> {
         self.0
             .into_iter()
             .map(|(key, acc)| {
@@ -88,7 +96,7 @@ impl AggregateMap {
                 let monday =
                     NaiveDate::from_isoywd_opt(key.iso_year, key.iso_week, chrono::Weekday::Mon)
                         .expect("valid ISO year+week from parsed date");
-                WeeklyEntry {
+                AggregatedEntry {
                     week_start: monday.format("%Y-%m-%d").to_string(),
                     metric: key.metric,
                     platform: key.platform,
