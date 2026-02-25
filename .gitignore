@@ -1,4 +1,5 @@
 /target
 /cache
 /out
+/static/data
 /.claude
