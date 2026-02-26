@@ -132,6 +132,14 @@
             font-size: 12px;
             color: var(--muted);
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .stats-text {
+            min-width: 200px;
         }
 
         /* ── Overview Table ──────────────────────────── */
@@ -234,8 +242,7 @@
                     color: var(--blue);
                 }
                 &:disabled {
-                    opacity: 0.4;
-                    cursor: not-allowed;
+                    opacity: 0.5;
                 }
             }
         }
@@ -358,7 +365,6 @@
         }
         .split-label {
             font-size: 13px;
-            cursor: pointer;
             user-select: none;
             display: flex;
             align-items: center;
@@ -369,8 +375,7 @@
             }
 
             &:has(> input:disabled) {
-                opacity: 0.4;
-                cursor: not-allowed;
+                opacity: 0.5;
             }
         }
 
@@ -487,7 +492,16 @@
                 />
             </div>
             <div class="pills" id="cat-pills"></div>
-            <div class="stats-line" id="ov-stats"></div>
+            <div class="stats-line" id="ov-stats">
+                <span class="stats-text" id="ov-stats-text"></span>
+                <label
+                    class="split-label"
+                    title="Disable pagination and show all rows"
+                >
+                    <input type="checkbox" id="chk-showall" disabled />
+                    Show all
+                </label>
+            </div>
             <div class="table-card" id="table-card">
                 <div class="loader">
                     <div class="spinner"></div>
@@ -593,6 +607,8 @@
         let sortDir = -1;
         let searchQ = "";
         let selCat = "all";
+        let showAll = false;
+        let overviewLoaded = false;
 
         const detail = {
             name: "",
@@ -666,6 +682,9 @@
                 },
             );
 
+            overviewLoaded = true;
+            document.getElementById("chk-showall").disabled = false;
+
             buildCatPills();
             applyFilter();
             renderTable();
@@ -727,17 +746,26 @@
 
         /* ── Table ──────────────────────────────────────────────── */
         function renderTable() {
+            // If overview didn't load (e.g. network error), don't let UI actions
+            // overwrite the error message.
+            if (!overviewLoaded) return;
+
             const wrap = document.getElementById("table-card");
             const total = filtered.length;
-            const items = filtered.slice(page * PAGE, (page + 1) * PAGE);
+            const items = showAll
+                ? filtered
+                : filtered.slice(page * PAGE, (page + 1) * PAGE);
             const maxRate = filtered.length
                 ? Math.max(...filtered.map((c) => c.rate))
                 : 1;
 
-            document.getElementById("ov-stats").textContent =
+            const statsTextEl = document.getElementById("ov-stats-text");
+            statsTextEl.textContent =
                 total === 0
                     ? "No counters match."
-                    : `Showing ${page * PAGE + 1}–${Math.min((page + 1) * PAGE, total)} of ${total.toLocaleString()} counters`;
+                    : showAll
+                      ? `Showing all ${total.toLocaleString()} counters`
+                      : `Showing ${page * PAGE + 1}–${Math.min((page + 1) * PAGE, total)} of ${total.toLocaleString()} counters`;
 
             if (total === 0) {
                 wrap.innerHTML =
@@ -787,12 +815,17 @@
                 tr.addEventListener("click", () => openDetail(tr.dataset.name)),
             );
 
-            renderPagination(total);
+            renderPagination(total, showAll);
         }
 
-        function renderPagination(total) {
-            const pages = Math.ceil(total / PAGE);
+        function renderPagination(total, showAllMode = false) {
             const el = document.getElementById("pagination");
+            if (showAllMode) {
+                el.innerHTML = "";
+                return;
+            }
+
+            const pages = Math.ceil(total / PAGE);
             if (pages <= 1) {
                 el.innerHTML = "";
                 return;
@@ -1278,6 +1311,15 @@
             .getElementById("btn-back")
             .addEventListener("click", () => showOverview());
 
+        document
+            .getElementById("chk-showall")
+            .addEventListener("change", (e) => {
+                if (!overviewLoaded || e.target.disabled) return;
+                showAll = e.target.checked;
+                page = 0;
+                renderTable();
+            });
+
         let debTimer;
         document.getElementById("search").addEventListener("input", (e) => {
             clearTimeout(debTimer);
@@ -1364,6 +1406,13 @@
                     ); // noPush — URL is already the source of truth
                 }
             } catch (e) {
+                // Keep "Show all" disabled, and keep the error visible.
+                overviewLoaded = false;
+                const chk = document.getElementById("chk-showall");
+                chk.checked = false;
+                chk.disabled = true;
+
+                document.getElementById("ov-stats-text").textContent = "";
                 document.getElementById("table-card").innerHTML =
                     `<div class="error-msg" style="margin:16px">Failed to load overview: ${esc(e.message)}</div>`;
             }
