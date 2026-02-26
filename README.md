@@ -1,7 +1,7 @@
 # Firefox use counters
 
 This repo processes the use counters from public-data.mozilla.org and visualizes
-them with a very simple [dashboard](https://use-counters.crisal.io).
+them with a very simple [dashboard](https://mozilla.github.io/use-counters).
 
 The data should be updated daily via GitHub actions (you can check the footer
 for the actual date). There are various
