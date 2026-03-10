@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::BufRead};
 
 use chrono::{Datelike, NaiveDate};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{StreamDeserializer, de::IoRead};
 use std::collections::BTreeMap;
 
@@ -106,16 +106,16 @@ pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> boo
     true
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct MetricOverview {
     cnt: u64,
     denominator: u64,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Overview {
     last_updated: Vec<String>,
-    all_metrics: BTreeMap<String, MetricOverview>,
+    pub all_metrics: BTreeMap<String, MetricOverview>,
 }
 
 impl Overview {
