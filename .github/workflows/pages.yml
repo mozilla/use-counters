@@ -41,7 +41,7 @@ jobs:
       - name: Import data
         run: |
           mkdir -p static/data
-          cargo run --release -- -o static/data 2>&1 | tee static/data/import-log.txt
+          cargo run --release -- aggregate -o static/data 2>&1 | tee static/data/import-log.txt
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
