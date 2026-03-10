@@ -608,7 +608,6 @@
         let searchQ = "";
         let selCat = "all";
         let showAll = false;
-        let overviewLoaded = false;
 
         const detail = {
             name: "",
@@ -682,9 +681,7 @@
                 },
             );
 
-            overviewLoaded = true;
             document.getElementById("chk-showall").disabled = false;
-
             buildCatPills();
             applyFilter();
             renderTable();
@@ -746,10 +743,6 @@
 
         /* ── Table ──────────────────────────────────────────────── */
         function renderTable() {
-            // If overview didn't load (e.g. network error), don't let UI actions
-            // overwrite the error message.
-            if (!overviewLoaded) return;
-
             const wrap = document.getElementById("table-card");
             const total = filtered.length;
             const items = showAll
@@ -815,12 +808,12 @@
                 tr.addEventListener("click", () => openDetail(tr.dataset.name)),
             );
 
-            renderPagination(total, showAll);
+            renderPagination(total);
         }
 
-        function renderPagination(total, showAllMode = false) {
+        function renderPagination(total) {
             const el = document.getElementById("pagination");
-            if (showAllMode) {
+            if (showAll) {
                 el.innerHTML = "";
                 return;
             }
@@ -1314,11 +1307,11 @@
         document
             .getElementById("chk-showall")
             .addEventListener("change", (e) => {
-                if (!overviewLoaded || e.target.disabled) return;
                 showAll = e.target.checked;
                 page = 0;
                 renderTable();
             });
+        showAll = document.getElementById("chk-showall").checked;
 
         let debTimer;
         document.getElementById("search").addEventListener("input", (e) => {
@@ -1406,12 +1399,6 @@
                     ); // noPush — URL is already the source of truth
                 }
             } catch (e) {
-                // Keep "Show all" disabled, and keep the error visible.
-                overviewLoaded = false;
-                const chk = document.getElementById("chk-showall");
-                chk.checked = false;
-                chk.disabled = true;
-
                 document.getElementById("ov-stats-text").textContent = "";
                 document.getElementById("table-card").innerHTML =
                     `<div class="error-msg" style="margin:16px">Failed to load overview: ${esc(e.message)}</div>`;
