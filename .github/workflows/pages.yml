@@ -34,14 +34,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check if data refresh needed
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "refresh_needed=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            echo "refresh_needed=true" >> $GITHUB_OUTPUT
+          else
+            non_static=$(git diff --name-only ${{ github.event.before }} HEAD | grep -vc '^static/' || true)
+            [ "$non_static" -gt 0 ] && echo "refresh_needed=true" >> $GITHUB_OUTPUT || echo "refresh_needed=false" >> $GITHUB_OUTPUT
+          fi
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
       - name: Import data
+        if: steps.check.outputs.refresh_needed == 'true'
         run: |
           mkdir -p static/data
           cargo run --release -- aggregate -o static/data 2>&1 | tee static/data/import-log.txt
+      - name: Mirror existing artifact data
+        if: steps.check.outputs.refresh_needed == 'false'
+        run: |
+          mkdir -p static/data
+          curl -sf https://mozilla.github.io/use-counters/data/import-log.txt -o static/data/import-log.txt
+          echo "--- $(date -u +"%Y-%m-%d %H:%M:%S UTC") ---" | tee -a static/data/import-log.txt
+          cargo run --release -- artifact -o static/data 2>&1 | tee -a static/data/import-log.txt
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
