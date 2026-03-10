@@ -154,6 +154,9 @@
             width: 100%;
             border-collapse: collapse;
         }
+        colgroup col:first-child {
+            width: 50%;
+        }
         thead th {
             background: var(--bg);
             border-bottom: 1px solid var(--border);
@@ -770,7 +773,7 @@
             const si = (k) =>
                 sortKey === k ? (sortDir === -1 ? " ↓" : " ↑") : " ⇅";
 
-            let html = `<table><thead><tr>
+            let html = `<table><colgroup><col><col><col></colgroup><thead><tr>
     <th data-k="name"  class="${sortKey === "name" ? "sorted" : ""}">Counter${si("name")}</th>
     <th data-k="rate"  class="${sortKey === "rate" ? "sorted" : ""}">Usage Rate${si("rate")}</th>
     <th data-k="cnt"   class="${sortKey === "cnt" ? "sorted" : ""}" style="text-align:right">Total Hits${si("cnt")}</th>
