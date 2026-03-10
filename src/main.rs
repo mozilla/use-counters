@@ -21,6 +21,11 @@ pub enum ProcessingMode {
     about = "Download and aggregate Mozilla use-counter telemetry data by metric and ISO week"
 )]
 struct Cli {
+    /// Disable gzip compression for downloads. Gzip allows significantly smaller transfers, but
+    /// higher CPU usage.
+    #[arg(long)]
+    no_gzip: bool,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -88,7 +93,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let client = reqwest::Client::builder()
-        .user_agent("use-counters/0.1 (https://github.com/emilio/use-counters)")
+        .user_agent("use-counters/0.1 (https://github.com/mozilla/use-counters)")
+        .gzip(!cli.no_gzip)
         .build()?;
 
     match cli.command {
