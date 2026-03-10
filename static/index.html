@@ -1,788 +1,826 @@
 <!doctype html>
 <html lang="en">
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <title>Mozilla Use Counters Dashboard</title>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-        :root {
-            --container-max-width: 1100px;
-            --blue: light-dark(#0060df, #00b3f4);
-            --blue-light: light-dark(#e0edff, #003366);
-            --blue-dark: light-dark(#003eaa, #0090d0);
-            --orange: light-dark(#ff9400, #ffb347);
-            --bg: light-dark(#f9f9fb, #1c1b22);
-            --surface: light-dark(#ffffff, #2b2a33);
-            --border: light-dark(#d7d7db, #52525e);
-            --text: light-dark(#15141a, #fbfbfe);
-            --muted: light-dark(#5b5b66, #9090a8);
-            --radius: 6px;
-            --shadow: light-dark(
-                0 1px 3px rgba(0, 0, 0, 0.1),
-                0 2px 6px rgba(0, 0, 0, 0.5)
-            );
-            /* Chart-specific */
-            --bar-empty: light-dark(#e8e8ee, #3a3944);
-            --grid-line: light-dark(#eeeef2, #34333d);
-            --axis-line: light-dark(#d7d7db, #52525e);
-            --axis-text: light-dark(#5b5b66, #9090a8);
-            --focus-line: light-dark(#b0b0bc, #7070a0);
-            --clr-firefox: light-dark(#0060df, #00b3f4);
-            --clr-fenix: light-dark(#ff9400, #ffb347);
-            font-family:
-                -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            font-size: 14px;
-            line-height: 1.5;
-        }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light dark" />
+<title>Mozilla Use Counters Dashboard</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
 
-        body {
-            margin: 0;
-        }
+  :root {
+    --container-max-width: 1100px;
+    --blue: light-dark(#0060df, #00b3f4);
+    --blue-light: light-dark(#e0edff, #003366);
+    --blue-dark: light-dark(#003eaa, #0090d0);
+    --orange: light-dark(#ff9400, #ffb347);
+    --bg: light-dark(#f9f9fb, #1c1b22);
+    --surface: light-dark(#ffffff, #2b2a33);
+    --border: light-dark(#d7d7db, #52525e);
+    --text: light-dark(#15141a, #fbfbfe);
+    --muted: light-dark(#5b5b66, #9090a8);
+    --radius: 6px;
+    --shadow: light-dark(0 1px 3px rgba(0, 0, 0, 0.1),
+        0 2px 6px rgba(0, 0, 0, 0.5));
+    /* Chart-specific */
+    --bar-empty: light-dark(#e8e8ee, #3a3944);
+    --grid-line: light-dark(#eeeef2, #34333d);
+    --axis-line: light-dark(#d7d7db, #52525e);
+    --axis-text: light-dark(#5b5b66, #9090a8);
+    --focus-line: light-dark(#b0b0bc, #7070a0);
+    --clr-firefox: light-dark(#0060df, #00b3f4);
+    --clr-fenix: light-dark(#ff9400, #ffb347);
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
 
-        header {
-            background: var(--blue);
-            color: #fff;
-            padding: 13px 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+  body {
+    margin: 0;
+  }
 
-            > h1,
-            > p {
-                margin: 0;
-                width: var(--container-max-width);
-            }
-            > h1 {
-                font-size: 17px;
-                font-weight: 600;
-            }
+  header {
+    background: var(--blue);
+    color: #fff;
+    padding: 13px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 
-            > p {
-                margin: 0;
-                font-size: 13px;
-                opacity: 0.75;
-            }
-        }
-        footer {
-            border-top: 1px solid var(--border);
-            padding: 16px;
-            text-align: center;
-        }
-        .container {
-            max-width: var(--container-max-width);
-            margin: 16px auto;
-        }
-        .toolbar {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-        .search {
-            flex: 1;
-            min-width: 240px;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 14px;
-            background: var(--surface);
+    >h1,
+    >p {
+      margin: 0;
+      width: var(--container-max-width);
+    }
 
-            &:focus {
-                outline: none;
-                border-color: var(--blue);
-                box-shadow: 0 0 0 2px #bde0ff;
-            }
-        }
+    >h1 {
+      font-size: 17px;
+      font-weight: 600;
+    }
 
-        /* ── Pills ───────────────────────────────────── */
-        .pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 13px;
-        }
-        .pill {
-            padding: 3px 10px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            cursor: pointer;
-            font-size: 12px;
-            white-space: nowrap;
+    >p {
+      margin: 0;
+      font-size: 13px;
+      opacity: 0.75;
+    }
+  }
 
-            &:hover {
-                border-color: var(--blue);
-                color: var(--blue);
-            }
-            &.active {
-                background: var(--blue);
-                border-color: var(--blue);
-                color: #fff;
-            }
-        }
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px;
+    text-align: center;
+  }
 
-        /* ── Stats line ──────────────────────────────── */
-        .stats-line {
-            font-size: 12px;
-            color: var(--muted);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .stats-text {
-            min-width: 200px;
-        }
+  .container {
+    max-width: var(--container-max-width);
+    margin: 16px auto;
+  }
 
-        /* ── Overview Table ──────────────────────────── */
-        .table-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: auto;
-            box-shadow: var(--shadow);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        colgroup col:first-child {
-            width: 50%;
-        }
-        thead th {
-            background: var(--bg);
-            border-bottom: 1px solid var(--border);
-            padding: 9px 12px;
-            text-align: left;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--muted);
-            cursor: pointer;
-            user-select: none;
-            white-space: nowrap;
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
 
-            &:hover,
-            &.sorted {
-                color: var(--blue);
-            }
-        }
-        tbody tr {
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background-color 0.1s;
-            &:last-child {
-                border-bottom: none;
-            }
-            &:hover {
-                background: var(--blue-light);
-            }
-        }
-        td {
-            padding: 9px 12px;
-            vertical-align: middle;
-        }
-        .td-name {
-            font-family:
-                ui-monospace, "Cascadia Code", "SF Mono", "Fira Code", monospace;
-            font-size: 12px;
-            word-break: break-all;
-            > small {
-                display: block;
-                font-size: 11px;
-                color: var(--muted);
-                margin-top: 1px;
-                font-family: inherit;
-            }
-        }
-        .rate-label {
-            font-size: 12px;
-            color: var(--muted);
-            margin-bottom: 3px;
-        }
-        .bar-bg {
-            height: 5px;
-            background: var(--bar-empty);
-            border-radius: 3px;
-        }
-        .bar-fill {
-            height: 5px;
-            background: var(--blue);
-            border-radius: 3px;
-        }
-        .td-cnt {
-            font-size: 12px;
-            color: var(--muted);
-            text-align: right;
-            white-space: nowrap;
-        }
+  .search {
+    flex: 1;
+    min-width: 240px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    background: var(--surface);
 
-        /* ── Pagination ──────────────────────────────── */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 16px;
-            > button {
-                padding: 6px 14px;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                background: var(--surface);
-                cursor: pointer;
-                font-size: 13px;
-                &:hover {
-                    border-color: var(--blue);
-                    color: var(--blue);
-                }
-                &:disabled {
-                    opacity: 0.5;
-                }
-            }
-        }
-        .pg-info {
-            font-size: 13px;
-            color: var(--muted);
-        }
-        /* ── Loading / Empty / Error ─────────────────── */
-        .loader {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 60px;
-            color: var(--muted);
-        }
-        .spinner {
-            width: 22px;
-            height: 22px;
-            border: 3px solid var(--border);
-            border-top-color: var(--blue);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            margin-right: 10px;
-            flex-shrink: 0;
-        }
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-        .empty {
-            text-align: center;
-            padding: 56px;
-            color: var(--muted);
-        }
-        .error-msg {
-            background: #fff0f0;
-            border: 1px solid #f8c8c8;
-            border-radius: var(--radius);
-            padding: 12px 16px;
-            color: #c00;
-            margin-bottom: 14px;
-        }
+    &:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px #bde0ff;
+    }
+  }
 
-        /* ── Detail – Nav ────────────────────────────── */
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            background: var(--surface);
-            cursor: pointer;
-            font-size: 13px;
-            margin-bottom: 14px;
-            &:hover {
-                border-color: var(--blue);
-                color: var(--blue);
-            }
-        }
-        .detail-title {
-            font-family: monospace;
-            font-size: 14px;
-            font-weight: 500;
-            word-break: break-all;
-            margin-bottom: 3px;
-        }
-        .detail-cat {
-            font-size: 12px;
-            color: var(--muted);
-            margin-bottom: 16px;
-        }
+  /* ── Pills ───────────────────────────────────── */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 13px;
+  }
 
-        /* ── Filter bar ──────────────────────────────── */
-        .filter-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 10px 14px;
-            margin-bottom: 16px;
-            box-shadow: var(--shadow);
-        }
-        .fg {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            > label {
-                font-size: 11px;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                color: var(--muted);
-                white-space: nowrap;
-            }
-            > select {
-                padding: 5px 8px;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                font-size: 13px;
-                background: var(--bg);
-                &:focus {
-                    outline: none;
-                    border-color: var(--blue);
-                }
-                &:disabled {
-                    opacity: 0.5;
-                }
-            }
-        }
-        .bar-sep {
-            width: 1px;
-            height: 22px;
-            background: var(--border);
-            flex-shrink: 0;
-        }
-        .split-label {
-            font-size: 13px;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+  .pill {
+    padding: 3px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
 
-            > input {
-                cursor: inherit;
-            }
+    &:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
 
-            &:has(> input:disabled) {
-                opacity: 0.5;
-            }
-        }
+    &.active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+  }
 
-        /* ── Summary cards ───────────────────────────── */
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 14px;
-            box-shadow: var(--shadow);
-        }
-        .card-label {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--muted);
-            margin-bottom: 5px;
-        }
-        .card-value {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--blue);
-        }
-        .card-sub {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 3px;
-        }
+  /* ── Stats line ──────────────────────────────── */
+  .stats-line {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 
-        /* ── Chart ───────────────────────────────────── */
-        .chart-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 16px;
-            box-shadow: var(--shadow);
-        }
-        .chart-card-header {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--muted);
-            margin-bottom: 12px;
-        }
-        #chart-wrap {
-            position: relative;
-        }
-        #chart-wrap svg {
-            display: block;
-            overflow: visible;
-        }
-        #chart-wrap .grid-lines .tick line {
-            stroke: var(--grid-line);
-        }
-        #chart-wrap .grid-lines .domain {
-            display: none;
-        }
+  .stats-text {
+    min-width: 200px;
+  }
 
-        /* ── Tooltip ─────────────────────────────────── */
-        .chart-tooltip {
-            position: fixed;
-            z-index: 200;
-            pointer-events: none;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 8px 12px;
-            font-size: 12px;
-            line-height: 1.7;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-            display: none;
-            min-width: 140px;
-            .tt-date {
-                font-weight: 600;
-                color: var(--text);
-                margin-bottom: 3px;
-                font-size: 11px;
-            }
-            .tt-row {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-            .tt-dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                flex-shrink: 0;
-            }
-        }
-    </style>
-    <header>
-        <h1>Mozilla Use Counters Dashboard</h1>
-        <p>Web platform feature usage rates from Firefox telemetry</p>
-    </header>
+  /* ── Overview Table ──────────────────────────── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: auto;
+    box-shadow: var(--shadow);
+  }
 
-    <!-- ════════════════ Overview View ════════════════ -->
-    <div id="view-overview">
-        <div class="container">
-            <div class="toolbar">
-                <input
-                    type="search"
-                    id="search"
-                    class="search"
-                    placeholder="Search counters…"
-                    autocomplete="off"
-                    spellcheck="false"
-                />
-            </div>
-            <div class="pills" id="cat-pills"></div>
-            <div class="stats-line" id="ov-stats">
-                <span class="stats-text" id="ov-stats-text"></span>
-                <label
-                    class="split-label"
-                    title="Disable pagination and show all rows"
-                >
-                    <input type="checkbox" id="chk-showall" disabled />
-                    Show all
-                </label>
-            </div>
-            <div class="table-card" id="table-card">
-                <div class="loader">
-                    <div class="spinner"></div>
-                    Loading overview…
-                </div>
-            </div>
-            <div class="pagination" id="pagination"></div>
-        </div>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  colgroup col:first-child {
+    width: 50%;
+  }
+
+  thead th {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 9px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+
+    &:hover,
+    &.sorted {
+      color: var(--blue);
+    }
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background-color 0.1s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: var(--blue-light);
+    }
+  }
+
+  td {
+    padding: 9px 12px;
+    vertical-align: middle;
+  }
+
+  .td-name {
+    font-family:
+      ui-monospace, "Cascadia Code", "SF Mono", "Fira Code", monospace;
+    font-size: 12px;
+    word-break: break-all;
+
+    >small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+      font-family: inherit;
+    }
+  }
+
+  .rate-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+
+  .bar-bg {
+    height: 5px;
+    background: var(--bar-empty);
+    border-radius: 3px;
+  }
+
+  .bar-fill {
+    height: 5px;
+    background: var(--blue);
+    border-radius: 3px;
+  }
+
+  .td-cnt {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ── Pagination ──────────────────────────────── */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+
+    >button {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 13px;
+
+      &:hover {
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+      }
+    }
+  }
+
+  .pg-info {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Loading / Empty / Error ─────────────────── */
+  .loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .empty {
+    text-align: center;
+    padding: 56px;
+    color: var(--muted);
+  }
+
+  .error-msg {
+    background: #fff0f0;
+    border: 1px solid #f8c8c8;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: #c00;
+    margin-bottom: 14px;
+  }
+
+  /* ── Detail – Nav ────────────────────────────── */
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 13px;
+    margin-bottom: 14px;
+
+    &:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+  }
+
+  .detail-title {
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: 500;
+    word-break: break-all;
+    margin-bottom: 3px;
+  }
+
+  .detail-cat {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* ── Filter bar ──────────────────────────────── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .fg {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    >label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    >select {
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      background: var(--bg);
+
+      &:focus {
+        outline: none;
+        border-color: var(--blue);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+      }
+    }
+  }
+
+  .bar-sep {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .split-label {
+    font-size: 13px;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    >input {
+      cursor: inherit;
+    }
+
+    &:has(> input:disabled) {
+      opacity: 0.5;
+    }
+  }
+
+  /* ── Summary cards ───────────────────────────── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  .card-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  .card-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* ── Chart ───────────────────────────────────── */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .chart-card-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  #chart-wrap {
+    position: relative;
+  }
+
+  #chart-wrap svg {
+    display: block;
+    overflow: visible;
+  }
+
+  #chart-wrap .grid-lines .tick line {
+    stroke: var(--grid-line);
+  }
+
+  #chart-wrap .grid-lines .domain {
+    display: none;
+  }
+
+  /* ── Tooltip ─────────────────────────────────── */
+  .chart-tooltip {
+    position: fixed;
+    z-index: 200;
+    pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.7;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    display: none;
+    min-width: 140px;
+
+    .tt-date {
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 3px;
+      font-size: 11px;
+    }
+
+    .tt-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tt-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+  }
+</style>
+<header>
+  <h1>Mozilla Use Counters Dashboard</h1>
+  <p>Web platform feature usage rates from Firefox telemetry</p>
+</header>
+
+<!-- ════════════════ Overview View ════════════════ -->
+<div id="view-overview">
+  <div class="container">
+    <div class="toolbar">
+      <input type="search" id="search" class="search" placeholder="Search counters…" autocomplete="off"
+        spellcheck="false" />
+    </div>
+    <div class="pills" id="cat-pills"></div>
+    <div class="stats-line" id="ov-stats">
+      <span class="stats-text" id="ov-stats-text"></span>
+      <label class="split-label" title="Disable pagination and show all rows">
+        <input type="checkbox" id="chk-showall" disabled />
+        Show all
+      </label>
+    </div>
+    <div class="table-card" id="table-card">
+      <div class="loader">
+        <div class="spinner"></div>
+        Loading overview…
+      </div>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- ════════════════ Detail View ════════════════ -->
+<div id="view-detail" style="display: none">
+  <div class="container">
+    <button type="button" class="back-btn" id="btn-back">
+      ← All Counters
+    </button>
+    <div class="detail-title" id="dt-name"></div>
+    <div class="detail-cat" id="dt-cat"></div>
+    <div id="dt-error"></div>
+
+    <div class="filter-bar">
+      <div class="fg">
+        <label for="sel-plat">Product</label>
+        <select id="sel-plat">
+          <option value="all">All Products</option>
+          <option value="Firefox">Firefox Desktop</option>
+          <option value="Fenix">Fenix (Android)</option>
+        </select>
+      </div>
+      <div class="bar-sep"></div>
+      <div class="fg">
+        <label for="sel-ver">Version</label>
+        <select id="sel-ver">
+          <option value="all">All Versions</option>
+        </select>
+      </div>
+      <div class="bar-sep"></div>
+      <label class="split-label">
+        <input type="checkbox" id="chk-split" />
+        Split by product
+      </label>
     </div>
 
-    <!-- ════════════════ Detail View ════════════════ -->
-    <div id="view-detail" style="display: none">
-        <div class="container">
-            <button type="button" class="back-btn" id="btn-back">
-                ← All Counters
-            </button>
-            <div class="detail-title" id="dt-name"></div>
-            <div class="detail-cat" id="dt-cat"></div>
-            <div id="dt-error"></div>
+    <div class="cards" id="summary-cards"></div>
 
-            <div class="filter-bar">
-                <div class="fg">
-                    <label for="sel-plat">Product</label>
-                    <select id="sel-plat">
-                        <option value="all">All Products</option>
-                        <option value="Firefox">Firefox Desktop</option>
-                        <option value="Fenix">Fenix (Android)</option>
-                    </select>
-                </div>
-                <div class="bar-sep"></div>
-                <div class="fg">
-                    <label for="sel-ver">Version</label>
-                    <select id="sel-ver">
-                        <option value="all">All Versions</option>
-                    </select>
-                </div>
-                <div class="bar-sep"></div>
-                <label class="split-label">
-                    <input type="checkbox" id="chk-split" />
-                    Split by product
-                </label>
-            </div>
-
-            <div class="cards" id="summary-cards"></div>
-
-            <div class="chart-card">
-                <div class="chart-card-header">Usage Rate Over Time</div>
-                <div id="chart-area">
-                    <div id="chart-wrap"></div>
-                </div>
-            </div>
-        </div>
+    <div class="chart-card">
+      <div class="chart-card-header">Usage Rate Over Time</div>
+      <div id="chart-area">
+        <div id="chart-wrap"></div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <footer>
-        <a href="https://github.com/mozilla/use-counters">GitHub</a> | Source:
-        <a href="https://public-data.telemetry.mozilla.org/"
-            >Mozilla Public Data</a
-        >
-        |
-        <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2019039#c1"
-            >Known Caveats</a
-        >
-        |
-        <a href="data/import-log.txt">Data import log</a>
-        | Last updated: <span id="last-updated"></span>
-    </footer>
+<footer>
+  <a href="https://github.com/mozilla/use-counters">GitHub</a> | Source:
+  <a href="https://public-data.telemetry.mozilla.org/">Mozilla Public Data</a>
+  |
+  <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2019039#c1">Known Caveats</a>
+  |
+  <a href="data/import-log.txt">Data import log</a>
+  | Last updated: <span id="last-updated"></span>
+</footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-    <script>
-        "use strict";
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+  "use strict";
 
-        /* ── Constants ──────────────────────────────────────────── */
-        const PAGE = 100;
-        function cssVar(name) {
-            return getComputedStyle(document.documentElement)
-                .getPropertyValue(name)
-                .trim();
-        }
-        function CLR(product) {
-            return cssVar(
-                product === "Fenix" ? "--clr-fenix" : "--clr-firefox",
-            );
-        }
+  /* ── Constants ──────────────────────────────────────────── */
+  const PAGE = 100;
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim();
+  }
+  function CLR(product) {
+    return cssVar(
+      product === "Fenix" ? "--clr-fenix" : "--clr-firefox",
+    );
+  }
 
-        const CAT_LABELS = {
-            "css.page": "CSS",
-            "css.doc": "CSS",
-            page: "Custom",
-            doc: "Custom",
-            "worker.dedicated": "DedicatedWorker",
-            "worker.service": "ServiceWorker",
-            "worker.shared": "SharedWorker",
-            "deprecated_ops.page": "Deprecated",
-            "deprecated_ops.doc": "Deprecated",
+  const CAT_LABELS = {
+    "css.page": "CSS",
+    "css.doc": "CSS",
+    page: "Custom",
+    doc: "Custom",
+    "worker.dedicated": "DedicatedWorker",
+    "worker.service": "ServiceWorker",
+    "worker.shared": "SharedWorker",
+    "deprecated_ops.page": "Deprecated",
+    "deprecated_ops.doc": "Deprecated",
+  };
+
+  /* ── State ──────────────────────────────────────────────── */
+  let counters = []; // [{name, cnt, denominator, rate, cat, catLabel}]
+  let filtered = [];
+  let page = 0;
+  let sortKey = "rate";
+  let sortDir = -1;
+  let searchQ = "";
+  let selCat = "all";
+  let showAll = false;
+
+  const detail = {
+    name: "",
+    data: null,
+    platform: "all",
+    version: "all",
+    split: false,
+  };
+
+  const PARSE_DATE = d3.timeParse("%Y-%m-%d");
+  const FORMAT_DATE = d3.timeFormat("%b %e, %Y");
+  const tooltip = d3
+    .select("body")
+    .append("div")
+    .attr("class", "chart-tooltip");
+
+  /* ── Helpers ────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function parseCat(name) {
+    // "use.counter.css.page.css_gap" → "css.page"
+    return name.replace(/^use\.counter\./, "").replace(/\.[^.]+$/, "");
+  }
+
+  function displayName(name) {
+    return name.replace(/^use\.counter\./, "");
+  }
+
+  function fmtRate(r) {
+    const p = r * 100;
+    if (p >= 10) return p.toFixed(1) + "%";
+    if (p >= 1) return p.toFixed(2) + "%";
+    if (p >= 0.001) return p.toFixed(4) + "%";
+    if (p === 0) return "0%";
+    return p.toExponential(2) + "%";
+  }
+
+  function fmtNum(n) {
+    if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+    return String(n);
+  }
+
+  /* ── Overview ───────────────────────────────────────────── */
+  async function loadOverview() {
+    const res = await fetch("data/overview.json");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const {last_updated, all_metrics} = await res.json();
+    document.getElementById("last-updated").textContent = Array.from(
+      new Set(last_updated),
+    ).join(", ");
+    counters = Object.entries(all_metrics).map(
+      ([name, {cnt, denominator}]) => {
+        const cat = parseCat(name);
+        return {
+          name,
+          cnt,
+          denominator,
+          rate: denominator > 0 ? cnt / denominator : 0,
+          cat,
+          catLabel: CAT_LABELS[cat] || cat,
         };
+      },
+    );
 
-        /* ── State ──────────────────────────────────────────────── */
-        let counters = []; // [{name, cnt, denominator, rate, cat, catLabel}]
-        let filtered = [];
-        let page = 0;
-        let sortKey = "rate";
-        let sortDir = -1;
-        let searchQ = "";
-        let selCat = "all";
-        let showAll = false;
+    document.getElementById("chk-showall").disabled = false;
+    buildCatPills();
+    applyFilter();
+    renderTable();
+  }
 
-        const detail = {
-            name: "",
-            data: null,
-            platform: "all",
-            version: "all",
-            split: false,
-        };
+  /* ── Filter + Sort ──────────────────────────────────────── */
+  function applyFilter() {
+    let list = counters;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      list = list.filter((c) => c.name.toLowerCase().includes(q));
+    }
+    if (selCat !== "all") list = list.filter((c) => c.cat === selCat);
 
-        const PARSE_DATE = d3.timeParse("%Y-%m-%d");
-        const FORMAT_DATE = d3.timeFormat("%b %e, %Y");
-        const tooltip = d3
-            .select("body")
-            .append("div")
-            .attr("class", "chart-tooltip");
+    list = [...list].sort((a, b) => {
+      let va = a[sortKey],
+        vb = b[sortKey];
+      if (typeof va === "string") {
+        va = va.toLowerCase();
+        vb = vb.toLowerCase();
+      }
+      return va < vb ? -sortDir : va > vb ? sortDir : 0;
+    });
 
-        /* ── Helpers ────────────────────────────────────────────── */
-        function esc(s) {
-            return String(s)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;");
-        }
+    filtered = list;
+    page = 0;
+  }
 
-        function parseCat(name) {
-            // "use.counter.css.page.css_gap" → "css.page"
-            return name.replace(/^use\.counter\./, "").replace(/\.[^.]+$/, "");
-        }
+  /* ── Category Pills ─────────────────────────────────────── */
+  function buildCatPills() {
+    const counts = {};
+    for (const c of counters) counts[c.cat] = (counts[c.cat] || 0) + 1;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
 
-        function displayName(name) {
-            return name.replace(/^use\.counter\./, "");
-        }
+    const el = document.getElementById("cat-pills");
+    el.innerHTML = "";
 
-        function fmtRate(r) {
-            const p = r * 100;
-            if (p >= 10) return p.toFixed(1) + "%";
-            if (p >= 1) return p.toFixed(2) + "%";
-            if (p >= 0.001) return p.toFixed(4) + "%";
-            if (p === 0) return "0%";
-            return p.toExponential(2) + "%";
-        }
+    const mkPill = (label, key) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pill" + (selCat === key ? " active" : "");
+      b.textContent = label;
+      b.dataset.key = key;
+      b.addEventListener("click", () => {
+        selCat = key;
+        el.querySelectorAll(".pill").forEach((p) =>
+          p.classList.toggle("active", p.dataset.key === selCat),
+        );
+        applyFilter();
+        renderTable();
+      });
+      el.appendChild(b);
+    };
 
-        function fmtNum(n) {
-            if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
-            if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-            if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
-            if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
-            return String(n);
-        }
+    mkPill("All", "all");
+    for (const [k, n] of sorted)
+      mkPill(`${CAT_LABELS[k] || k} (${n})`, k);
+  }
 
-        /* ── Overview ───────────────────────────────────────────── */
-        async function loadOverview() {
-            const res = await fetch("data/overview.json");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const { last_updated, all_metrics } = await res.json();
-            document.getElementById("last-updated").textContent = Array.from(
-                new Set(last_updated),
-            ).join(", ");
-            counters = Object.entries(all_metrics).map(
-                ([name, { cnt, denominator }]) => {
-                    const cat = parseCat(name);
-                    return {
-                        name,
-                        cnt,
-                        denominator,
-                        rate: denominator > 0 ? cnt / denominator : 0,
-                        cat,
-                        catLabel: CAT_LABELS[cat] || cat,
-                    };
-                },
-            );
+  /* ── Table ──────────────────────────────────────────────── */
+  function renderTable() {
+    const wrap = document.getElementById("table-card");
+    const total = filtered.length;
+    const items = showAll
+      ? filtered
+      : filtered.slice(page * PAGE, (page + 1) * PAGE);
+    const maxRate = filtered.length
+      ? Math.max(...filtered.map((c) => c.rate))
+      : 1;
 
-            document.getElementById("chk-showall").disabled = false;
-            buildCatPills();
-            applyFilter();
-            renderTable();
-        }
+    const statsTextEl = document.getElementById("ov-stats-text");
+    statsTextEl.textContent =
+      total === 0
+        ? "No counters match."
+        : showAll
+          ? `Showing all ${total.toLocaleString()} counters`
+          : `Showing ${page * PAGE + 1}–${Math.min((page + 1) * PAGE, total)} of ${total.toLocaleString()} counters`;
 
-        /* ── Filter + Sort ──────────────────────────────────────── */
-        function applyFilter() {
-            let list = counters;
-            if (searchQ) {
-                const q = searchQ.toLowerCase();
-                list = list.filter((c) => c.name.toLowerCase().includes(q));
-            }
-            if (selCat !== "all") list = list.filter((c) => c.cat === selCat);
+    if (total === 0) {
+      wrap.innerHTML =
+        '<div class="empty">No counters match your search.</div>';
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
 
-            list = [...list].sort((a, b) => {
-                let va = a[sortKey],
-                    vb = b[sortKey];
-                if (typeof va === "string") {
-                    va = va.toLowerCase();
-                    vb = vb.toLowerCase();
-                }
-                return va < vb ? -sortDir : va > vb ? sortDir : 0;
-            });
+    const si = (k) =>
+      sortKey === k ? (sortDir === -1 ? " ↓" : " ↑") : " ⇅";
 
-            filtered = list;
-            page = 0;
-        }
-
-        /* ── Category Pills ─────────────────────────────────────── */
-        function buildCatPills() {
-            const counts = {};
-            for (const c of counters) counts[c.cat] = (counts[c.cat] || 0) + 1;
-            const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-
-            const el = document.getElementById("cat-pills");
-            el.innerHTML = "";
-
-            const mkPill = (label, key) => {
-                const b = document.createElement("button");
-                b.type = "button";
-                b.className = "pill" + (selCat === key ? " active" : "");
-                b.textContent = label;
-                b.dataset.key = key;
-                b.addEventListener("click", () => {
-                    selCat = key;
-                    el.querySelectorAll(".pill").forEach((p) =>
-                        p.classList.toggle("active", p.dataset.key === selCat),
-                    );
-                    applyFilter();
-                    renderTable();
-                });
-                el.appendChild(b);
-            };
-
-            mkPill("All", "all");
-            for (const [k, n] of sorted)
-                mkPill(`${CAT_LABELS[k] || k} (${n})`, k);
-        }
-
-        /* ── Table ──────────────────────────────────────────────── */
-        function renderTable() {
-            const wrap = document.getElementById("table-card");
-            const total = filtered.length;
-            const items = showAll
-                ? filtered
-                : filtered.slice(page * PAGE, (page + 1) * PAGE);
-            const maxRate = filtered.length
-                ? Math.max(...filtered.map((c) => c.rate))
-                : 1;
-
-            const statsTextEl = document.getElementById("ov-stats-text");
-            statsTextEl.textContent =
-                total === 0
-                    ? "No counters match."
-                    : showAll
-                      ? `Showing all ${total.toLocaleString()} counters`
-                      : `Showing ${page * PAGE + 1}–${Math.min((page + 1) * PAGE, total)} of ${total.toLocaleString()} counters`;
-
-            if (total === 0) {
-                wrap.innerHTML =
-                    '<div class="empty">No counters match your search.</div>';
-                document.getElementById("pagination").innerHTML = "";
-                return;
-            }
-
-            const si = (k) =>
-                sortKey === k ? (sortDir === -1 ? " ↓" : " ↑") : " ⇅";
-
-            let html = `<table><colgroup><col><col><col></colgroup><thead><tr>
+    let html = `<table><colgroup><col><col><col></colgroup><thead><tr>
     <th data-k="name"  class="${sortKey === "name" ? "sorted" : ""}">Counter${si("name")}</th>
     <th data-k="rate"  class="${sortKey === "rate" ? "sorted" : ""}">Usage Rate${si("rate")}</th>
     <th data-k="cnt"   class="${sortKey === "cnt" ? "sorted" : ""}" style="text-align:right">Total Hits${si("cnt")}</th>
   </tr></thead><tbody>`;
 
-            for (const c of items) {
-                const w =
-                    maxRate > 0 ? ((c.rate / maxRate) * 100).toFixed(1) : 0;
-                html += `<tr data-name="${esc(c.name)}">
+    for (const c of items) {
+      const w =
+        maxRate > 0 ? ((c.rate / maxRate) * 100).toFixed(1) : 0;
+      html += `<tr data-name="${esc(c.name)}">
       <td class="td-name">${esc(displayName(c.name))}<small>${esc(c.catLabel)}</small></td>
       <td style="min-width:140px">
         <div class="rate-label">${fmtRate(c.rate)}</div>
@@ -790,195 +828,195 @@
       </td>
       <td class="td-cnt">${fmtNum(c.cnt)}</td>
     </tr>`;
-            }
-            html += "</tbody></table>";
-            wrap.innerHTML = html;
+    }
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
 
-            wrap.querySelectorAll("thead th[data-k]").forEach((th) => {
-                th.addEventListener("click", () => {
-                    const k = th.dataset.k;
-                    if (sortKey === k) sortDir *= -1;
-                    else {
-                        sortKey = k;
-                        sortDir = k === "name" ? 1 : -1;
-                    }
-                    applyFilter();
-                    renderTable();
-                });
-            });
-
-            wrap.querySelectorAll("tbody tr").forEach((tr) =>
-                tr.addEventListener("click", () => openDetail(tr.dataset.name)),
-            );
-
-            renderPagination(total);
+    wrap.querySelectorAll("thead th[data-k]").forEach((th) => {
+      th.addEventListener("click", () => {
+        const k = th.dataset.k;
+        if (sortKey === k) sortDir *= -1;
+        else {
+          sortKey = k;
+          sortDir = k === "name" ? 1 : -1;
         }
+        applyFilter();
+        renderTable();
+      });
+    });
 
-        function renderPagination(total) {
-            const el = document.getElementById("pagination");
-            if (showAll) {
-                el.innerHTML = "";
-                return;
-            }
+    wrap.querySelectorAll("tbody tr").forEach((tr) =>
+      tr.addEventListener("click", () => openDetail(tr.dataset.name)),
+    );
 
-            const pages = Math.ceil(total / PAGE);
-            if (pages <= 1) {
-                el.innerHTML = "";
-                return;
-            }
-            el.innerHTML = `
+    renderPagination(total);
+  }
+
+  function renderPagination(total) {
+    const el = document.getElementById("pagination");
+    if (showAll) {
+      el.innerHTML = "";
+      return;
+    }
+
+    const pages = Math.ceil(total / PAGE);
+    if (pages <= 1) {
+      el.innerHTML = "";
+      return;
+    }
+    el.innerHTML = `
     <button type="button" id="pg-p" ${page === 0 ? "disabled" : ""}>← Prev</button>
     <span class="pg-info">Page ${page + 1} of ${pages}</span>
     <button type="button" id="pg-n" ${page >= pages - 1 ? "disabled" : ""}>Next →</button>`;
-            document.getElementById("pg-p")?.addEventListener("click", () => {
-                page--;
-                renderTable();
-            });
-            document.getElementById("pg-n")?.addEventListener("click", () => {
-                page++;
-                renderTable();
-            });
-        }
+    document.getElementById("pg-p")?.addEventListener("click", () => {
+      page--;
+      renderTable();
+    });
+    document.getElementById("pg-n")?.addEventListener("click", () => {
+      page++;
+      renderTable();
+    });
+  }
 
-        /* ── URL sync ───────────────────────────────────────────── */
-        function syncUrl(method = "push") {
-            const p = new URLSearchParams();
-            if (detail.name) {
-                p.set("counter", detail.name);
-                if (detail.platform !== "all")
-                    p.set("product", detail.platform);
-                if (detail.version !== "all")
-                    p.set("version", String(detail.version));
-                if (detail.split) p.set("split", "1");
-            }
-            const url = p.toString() ? "?" + p : location.pathname;
-            history[method === "replace" ? "replaceState" : "pushState"](
-                null,
-                "",
-                url,
-            );
-        }
+  /* ── URL sync ───────────────────────────────────────────── */
+  function syncUrl(method = "push") {
+    const p = new URLSearchParams();
+    if (detail.name) {
+      p.set("counter", detail.name);
+      if (detail.platform !== "all")
+        p.set("product", detail.platform);
+      if (detail.version !== "all")
+        p.set("version", String(detail.version));
+      if (detail.split) p.set("split", "1");
+    }
+    const url = p.toString() ? "?" + p : location.pathname;
+    history[method === "replace" ? "replaceState" : "pushState"](
+      null,
+      "",
+      url,
+    );
+  }
 
-        function showOverview(noPush = false) {
-            tooltip.style("display", "none");
-            document.getElementById("view-detail").style.display = "none";
-            document.getElementById("view-overview").style.display = "";
-            window.scrollTo(0, 0);
-            detail.name = "";
-            if (!noPush) syncUrl("push");
-        }
+  function showOverview(noPush = false) {
+    tooltip.style("display", "none");
+    document.getElementById("view-detail").style.display = "none";
+    document.getElementById("view-overview").style.display = "";
+    window.scrollTo(0, 0);
+    detail.name = "";
+    if (!noPush) syncUrl("push");
+  }
 
-        /* ── Detail View ────────────────────────────────────────── */
-        async function openDetail(name, opts = {}, noPush = false) {
-            document.getElementById("view-overview").style.display = "none";
-            document.getElementById("view-detail").style.display = "";
-            window.scrollTo(0, 0);
+  /* ── Detail View ────────────────────────────────────────── */
+  async function openDetail(name, opts = {}, noPush = false) {
+    document.getElementById("view-overview").style.display = "none";
+    document.getElementById("view-detail").style.display = "";
+    window.scrollTo(0, 0);
 
-            detail.name = name;
-            detail.data = null;
-            detail.platform = opts.platform || "all";
-            detail.version = opts.version || "all";
-            detail.split = opts.split || false;
+    detail.name = name;
+    detail.data = null;
+    detail.platform = opts.platform || "all";
+    detail.version = opts.version || "all";
+    detail.split = opts.split || false;
 
-            if (!noPush) syncUrl("push");
+    if (!noPush) syncUrl("push");
 
-            const splitChk = document.getElementById("chk-split");
-            document.getElementById("sel-plat").value = detail.platform;
-            splitChk.checked = detail.split;
-            splitChk.disabled = detail.platform !== "all";
-            document.getElementById("sel-ver").innerHTML =
-                '<option value="all">All Versions</option>';
+    const splitChk = document.getElementById("chk-split");
+    document.getElementById("sel-plat").value = detail.platform;
+    splitChk.checked = detail.split;
+    splitChk.disabled = detail.platform !== "all";
+    document.getElementById("sel-ver").innerHTML =
+      '<option value="all">All Versions</option>';
 
-            document.getElementById("dt-name").textContent = displayName(name);
-            document.getElementById("dt-cat").textContent =
-                CAT_LABELS[parseCat(name)] || parseCat(name);
-            document.getElementById("dt-error").innerHTML = "";
-            document.getElementById("summary-cards").innerHTML = "";
+    document.getElementById("dt-name").textContent = displayName(name);
+    document.getElementById("dt-cat").textContent =
+      CAT_LABELS[parseCat(name)] || parseCat(name);
+    document.getElementById("dt-error").innerHTML = "";
+    document.getElementById("summary-cards").innerHTML = "";
 
-            tooltip.style("display", "none");
-            document.getElementById("chart-area").innerHTML =
-                '<div class="loader"><div class="spinner"></div>Loading counter data…</div>';
+    tooltip.style("display", "none");
+    document.getElementById("chart-area").innerHTML =
+      '<div class="loader"><div class="spinner"></div>Loading counter data…</div>';
 
-            try {
-                const res = await fetch(
-                    `data/${encodeURIComponent(name)}.json`,
-                );
-                if (!res.ok) throw new Error("HTTP " + res.status);
-                detail.data = await res.json();
+    try {
+      const res = await fetch(
+        `data/${encodeURIComponent(name)}.json`,
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      detail.data = await res.json();
 
-                document.getElementById("chart-area").innerHTML =
-                    '<div id="chart-wrap"></div>';
+      document.getElementById("chart-area").innerHTML =
+        '<div id="chart-wrap"></div>';
 
-                updateVersionSelect();
-                redraw();
-            } catch (e) {
-                document.getElementById("chart-area").innerHTML = "";
-                document.getElementById("dt-error").innerHTML =
-                    `<div class="error-msg">Failed to load data: ${esc(e.message)}</div>`;
-            }
-        }
+      updateVersionSelect();
+      redraw();
+    } catch (e) {
+      document.getElementById("chart-area").innerHTML = "";
+      document.getElementById("dt-error").innerHTML =
+        `<div class="error-msg">Failed to load data: ${esc(e.message)}</div>`;
+    }
+  }
 
-        function updateVersionSelect() {
-            const plat = detail.platform;
-            const rows =
-                plat === "all"
-                    ? detail.data
-                    : detail.data.filter((d) => d.platform === plat);
-            const vers = [...new Set(rows.map((d) => d.version_major))].sort(
-                (a, b) => b - a,
-            );
+  function updateVersionSelect() {
+    const plat = detail.platform;
+    const rows =
+      plat === "all"
+        ? detail.data
+        : detail.data.filter((d) => d.platform === plat);
+    const vers = [...new Set(rows.map((d) => d.version_major))].sort(
+      (a, b) => b - a,
+    );
 
-            const sel = document.getElementById("sel-ver");
-            sel.innerHTML = '<option value="all">All Versions</option>';
-            vers.forEach((v) => {
-                const o = document.createElement("option");
-                o.value = v;
-                o.textContent = "v" + v;
-                sel.appendChild(o);
-            });
-            // Restore selection if version still present
-            sel.value =
-                detail.version !== "all" && vers.includes(+detail.version)
-                    ? String(detail.version)
-                    : "all";
-            detail.version = sel.value;
-        }
+    const sel = document.getElementById("sel-ver");
+    sel.innerHTML = '<option value="all">All Versions</option>';
+    vers.forEach((v) => {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = "v" + v;
+      sel.appendChild(o);
+    });
+    // Restore selection if version still present
+    sel.value =
+      detail.version !== "all" && vers.includes(+detail.version)
+        ? String(detail.version)
+        : "all";
+    detail.version = sel.value;
+  }
 
-        function aggByWeek(rows) {
-            const m = {};
-            for (const d of rows) {
-                if (!m[d.week_start]) m[d.week_start] = { cnt: 0, denom: 0 };
-                m[d.week_start].cnt += d.cnt;
-                m[d.week_start].denom += d.denominator;
-            }
-            return m;
-        }
+  function aggByWeek(rows) {
+    const m = {};
+    for (const d of rows) {
+      if (!m[d.week_start]) m[d.week_start] = {cnt: 0, denom: 0};
+      m[d.week_start].cnt += d.cnt;
+      m[d.week_start].denom += d.denominator;
+    }
+    return m;
+  }
 
-        function redraw() {
-            if (!detail.data) return;
-            const { platform, version, split } = detail;
+  function redraw() {
+    if (!detail.data) return;
+    const {platform, version, split} = detail;
 
-            let rows = detail.data;
-            if (platform !== "all")
-                rows = rows.filter((d) => d.platform === platform);
-            if (version !== "all")
-                rows = rows.filter((d) => d.version_major == version);
+    let rows = detail.data;
+    if (platform !== "all")
+      rows = rows.filter((d) => d.platform === platform);
+    if (version !== "all")
+      rows = rows.filter((d) => d.version_major == version);
 
-            const weeks = [...new Set(rows.map((d) => d.week_start))].sort();
+    const weeks = [...new Set(rows.map((d) => d.week_start))].sort();
 
-            // Summary stats
-            const totCnt = rows.reduce((s, d) => s + d.cnt, 0);
-            const totDenom = rows.reduce((s, d) => s + d.denominator, 0);
-            const totRate = totDenom > 0 ? totCnt / totDenom : 0;
-            const latW = weeks[weeks.length - 1] || null;
-            const latRows = latW
-                ? rows.filter((d) => d.week_start === latW)
-                : [];
-            const latCnt = latRows.reduce((s, d) => s + d.cnt, 0);
-            const latDenom = latRows.reduce((s, d) => s + d.denominator, 0);
-            const latRate = latDenom > 0 ? latCnt / latDenom : 0;
+    // Summary stats
+    const totCnt = rows.reduce((s, d) => s + d.cnt, 0);
+    const totDenom = rows.reduce((s, d) => s + d.denominator, 0);
+    const totRate = totDenom > 0 ? totCnt / totDenom : 0;
+    const latW = weeks[weeks.length - 1] || null;
+    const latRows = latW
+      ? rows.filter((d) => d.week_start === latW)
+      : [];
+    const latCnt = latRows.reduce((s, d) => s + d.cnt, 0);
+    const latDenom = latRows.reduce((s, d) => s + d.denominator, 0);
+    const latRate = latDenom > 0 ? latCnt / latDenom : 0;
 
-            document.getElementById("summary-cards").innerHTML = `
+    document.getElementById("summary-cards").innerHTML = `
     <div class="card">
       <div class="card-label">Overall Rate</div>
       <div class="card-value">${fmtRate(totRate)}</div>
@@ -1000,412 +1038,413 @@
       <div class="card-sub">${weeks[0] || ""} – ${latW || ""}</div>
     </div>`;
 
-            // Build datasets
-            const showSplit = split && platform === "all";
-            let datasets;
+    // Build datasets
+    const showSplit = split && platform === "all";
+    let datasets;
 
-            if (showSplit) {
-                datasets = ["Firefox", "Fenix"].map((p) => {
-                    const bw = aggByWeek(rows.filter((d) => d.platform === p));
-                    return {
-                        label:
-                            p === "Firefox"
-                                ? "Firefox Desktop"
-                                : "Fenix (Android)",
-                        color: CLR(p),
-                        dash: p === "Fenix" ? "6,3" : null,
-                        fill: false,
-                        values: weeks.map((w) => ({
-                            week: w,
-                            date: PARSE_DATE(w),
-                            rate: bw[w] ? bw[w].cnt / bw[w].denom : null,
-                        })),
-                    };
-                });
-            } else {
-                const bw = aggByWeek(rows);
-                const color = CLR(platform === "Fenix" ? "Fenix" : "Firefox");
-                const label =
-                    platform === "Firefox"
-                        ? "Firefox Desktop"
-                        : platform === "Fenix"
-                          ? "Fenix (Android)"
-                          : "All Products";
-                datasets = [
-                    {
-                        label,
-                        color,
-                        dash: null,
-                        fill: true,
-                        values: weeks.map((w) => ({
-                            week: w,
-                            date: PARSE_DATE(w),
-                            rate: bw[w] ? bw[w].cnt / bw[w].denom : null,
-                        })),
-                    },
-                ];
-            }
+    if (showSplit) {
+      datasets = ["Firefox", "Fenix"].map((p) => {
+        const bw = aggByWeek(rows.filter((d) => d.platform === p));
+        return {
+          label:
+            p === "Firefox"
+              ? "Firefox Desktop"
+              : "Fenix (Android)",
+          color: CLR(p),
+          dash: p === "Fenix" ? "6,3" : null,
+          fill: false,
+          values: weeks.map((w) => ({
+            week: w,
+            date: PARSE_DATE(w),
+            rate: bw[w] ? bw[w].cnt / bw[w].denom : null,
+          })),
+        };
+      });
+    } else {
+      const bw = aggByWeek(rows);
+      const color = CLR(platform === "Fenix" ? "Fenix" : "Firefox");
+      const label =
+        platform === "Firefox"
+          ? "Firefox Desktop"
+          : platform === "Fenix"
+            ? "Fenix (Android)"
+            : "All Products";
+      datasets = [
+        {
+          label,
+          color,
+          dash: null,
+          fill: true,
+          values: weeks.map((w) => ({
+            week: w,
+            date: PARSE_DATE(w),
+            rate: bw[w] ? bw[w].cnt / bw[w].denom : null,
+          })),
+        },
+      ];
+    }
 
-            const wrap = document.getElementById("chart-wrap");
-            if (wrap) drawD3Chart(wrap, datasets, showSplit);
-        }
+    const wrap = document.getElementById("chart-wrap");
+    if (wrap) drawD3Chart(wrap, datasets, showSplit);
+  }
 
-        /* ── D3 Chart ───────────────────────────────────────────── */
-        function drawD3Chart(container, datasets, showSplit) {
-            // Clear previous render
-            d3.select(container).selectAll("*").remove();
+  /* ── D3 Chart ───────────────────────────────────────────── */
+  function drawD3Chart(container, datasets, showSplit) {
+    // Clear previous render
+    d3.select(container).selectAll("*").remove();
 
-            const allVals = datasets.flatMap((ds) =>
-                ds.values.filter((v) => v.rate != null),
-            );
-            if (allVals.length === 0) {
-                container.innerHTML =
-                    '<div class="empty">No data for the current selection.</div>';
-                return;
-            }
+    const allVals = datasets.flatMap((ds) =>
+      ds.values.filter((v) => v.rate != null),
+    );
+    if (allVals.length === 0) {
+      container.innerHTML =
+        '<div class="empty">No data for the current selection.</div>';
+      return;
+    }
 
-            const margin = { top: 20, right: 24, bottom: 44, left: 72 };
-            const W =
-                Math.round(container.getBoundingClientRect().width) || 800;
-            const H = 320;
-            const iW = W - margin.left - margin.right;
-            const iH = H - margin.top - margin.bottom;
+    const margin = {top: 20, right: 24, bottom: 44, left: 72};
+    const W =
+      Math.round(container.getBoundingClientRect().width) || 800;
+    const H = 320;
+    const iW = W - margin.left - margin.right;
+    const iH = H - margin.top - margin.bottom;
 
-            // Scales
-            const allDates = datasets[0].values.map((d) => d.date);
-            const x = d3.scaleTime().domain(d3.extent(allDates)).range([0, iW]);
+    // Scales
+    const allDates = datasets[0].values.map((d) => d.date);
+    const x = d3.scaleTime().domain(d3.extent(allDates)).range([0, iW]);
 
-            const yMax = d3.max(allVals, (d) => d.rate);
-            const y = d3
-                .scaleLinear()
-                .domain([0, yMax * 1.1])
-                .range([iH, 0])
-                .nice();
+    const yMax = d3.max(allVals, (d) => d.rate);
+    const y = d3
+      .scaleLinear()
+      .domain([0, yMax * 1.1])
+      .range([iH, 0])
+      .nice();
 
-            // Theme colors (resolved at draw time so dark mode works)
-            const clrAxisLine = cssVar("--axis-line");
-            const clrAxisText = cssVar("--axis-text");
-            const clrFocusLine = cssVar("--focus-line");
-            const clrSurface = cssVar("--surface");
+    // Theme colors (resolved at draw time so dark mode works)
+    const clrAxisLine = cssVar("--axis-line");
+    const clrAxisText = cssVar("--axis-text");
+    const clrFocusLine = cssVar("--focus-line");
+    const clrSurface = cssVar("--surface");
 
-            // SVG root
-            const svg = d3
-                .select(container)
-                .append("svg")
-                .attr("width", W)
-                .attr("height", H);
+    // SVG root
+    const svg = d3
+      .select(container)
+      .append("svg")
+      .attr("width", W)
+      .attr("height", H);
 
-            const g = svg
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
+    const g = svg
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
-            // Clip path
-            g.append("clipPath")
-                .attr("id", "uc-clip")
-                .append("rect")
-                .attr("width", iW)
-                .attr("height", iH);
+    // Clip path
+    g.append("clipPath")
+      .attr("id", "uc-clip")
+      .append("rect")
+      .attr("width", iW)
+      .attr("height", iH);
 
-            // Horizontal grid lines
-            g.append("g")
-                .attr("class", "grid-lines")
-                .call(d3.axisLeft(y).ticks(5).tickSize(-iW).tickFormat(""));
+    // Horizontal grid lines
+    g.append("g")
+      .attr("class", "grid-lines")
+      .call(d3.axisLeft(y).ticks(5).tickSize(-iW).tickFormat(""));
 
-            // X axis
-            g.append("g")
-                .attr("transform", `translate(0,${iH})`)
-                .call(
-                    d3
-                        .axisBottom(x)
-                        .ticks(d3.timeMonth.every(2))
-                        .tickFormat(d3.timeFormat("%b %y"))
-                        .tickSizeOuter(0),
-                )
-                .call((a) => a.select(".domain").attr("stroke", clrAxisLine))
-                .call((a) =>
-                    a.selectAll(".tick line").attr("stroke", clrAxisLine),
-                )
-                .call((a) =>
-                    a
-                        .selectAll("text")
-                        .attr("fill", clrAxisText)
-                        .attr("font-size", "11px"),
-                );
+    // X axis
+    g.append("g")
+      .attr("transform", `translate(0,${iH})`)
+      .call(
+        d3
+          .axisBottom(x)
+          .ticks(d3.timeMonth.every(2))
+          .tickFormat(d3.timeFormat("%b %y"))
+          .tickSizeOuter(0),
+      )
+      .call((a) => a.select(".domain").attr("stroke", clrAxisLine))
+      .call((a) =>
+        a.selectAll(".tick line").attr("stroke", clrAxisLine),
+      )
+      .call((a) =>
+        a
+          .selectAll("text")
+          .attr("fill", clrAxisText)
+          .attr("font-size", "11px"),
+      );
 
-            // Y axis
-            g.append("g")
-                .call(
-                    d3
-                        .axisLeft(y)
-                        .ticks(5)
-                        .tickFormat((v) => fmtRate(v))
-                        .tickSizeOuter(0),
-                )
-                .call((a) => a.select(".domain").attr("stroke", clrAxisLine))
-                .call((a) =>
-                    a.selectAll(".tick line").attr("stroke", clrAxisLine),
-                )
-                .call((a) =>
-                    a
-                        .selectAll("text")
-                        .attr("fill", clrAxisText)
-                        .attr("font-size", "11px"),
-                );
+    // Y axis
+    g.append("g")
+      .call(
+        d3
+          .axisLeft(y)
+          .ticks(5)
+          .tickFormat((v) => fmtRate(v))
+          .tickSizeOuter(0),
+      )
+      .call((a) => a.select(".domain").attr("stroke", clrAxisLine))
+      .call((a) =>
+        a.selectAll(".tick line").attr("stroke", clrAxisLine),
+      )
+      .call((a) =>
+        a
+          .selectAll("text")
+          .attr("fill", clrAxisText)
+          .attr("font-size", "11px"),
+      );
 
-            // Line + area generators
-            const lineGen = d3
-                .line()
-                .defined((d) => d.rate != null)
-                .x((d) => x(d.date))
-                .y((d) => y(d.rate))
-                .curve(d3.curveMonotoneX);
+    // Line + area generators
+    const lineGen = d3
+      .line()
+      .defined((d) => d.rate != null)
+      .x((d) => x(d.date))
+      .y((d) => y(d.rate))
+      .curve(d3.curveMonotoneX);
 
-            const areaGen = d3
-                .area()
-                .defined((d) => d.rate != null)
-                .x((d) => x(d.date))
-                .y0(iH)
-                .y1((d) => y(d.rate))
-                .curve(d3.curveMonotoneX);
+    const areaGen = d3
+      .area()
+      .defined((d) => d.rate != null)
+      .x((d) => x(d.date))
+      .y0(iH)
+      .y1((d) => y(d.rate))
+      .curve(d3.curveMonotoneX);
 
-            // Draw paths
-            const pathG = g.append("g").attr("clip-path", "url(#uc-clip)");
+    // Draw paths
+    const pathG = g.append("g").attr("clip-path", "url(#uc-clip)");
 
-            for (const ds of datasets) {
-                if (ds.fill) {
-                    pathG
-                        .append("path")
-                        .datum(ds.values)
-                        .attr("fill", ds.color)
-                        .attr("fill-opacity", 0.1)
-                        .attr("d", areaGen);
-                }
-                pathG
-                    .append("path")
-                    .datum(ds.values)
-                    .attr("fill", "none")
-                    .attr("stroke", ds.color)
-                    .attr("stroke-width", 2)
-                    .attr("stroke-linejoin", "round")
-                    .attr("stroke-linecap", "round")
-                    .attr("stroke-dasharray", ds.dash || null)
-                    .attr("d", lineGen);
-            }
+    for (const ds of datasets) {
+      if (ds.fill) {
+        pathG
+          .append("path")
+          .datum(ds.values)
+          .attr("fill", ds.color)
+          .attr("fill-opacity", 0.1)
+          .attr("d", areaGen);
+      }
+      pathG
+        .append("path")
+        .datum(ds.values)
+        .attr("fill", "none")
+        .attr("stroke", ds.color)
+        .attr("stroke-width", 2)
+        .attr("stroke-linejoin", "round")
+        .attr("stroke-linecap", "round")
+        .attr("stroke-dasharray", ds.dash || null)
+        .attr("d", lineGen);
+    }
 
-            // Legend (split mode)
-            if (showSplit) {
-                const leg = g.append("g").attr("transform", "translate(8,4)");
-                datasets.forEach((ds, i) => {
-                    const lg = leg
-                        .append("g")
-                        .attr("transform", `translate(${i * 170},0)`);
-                    lg.append("line")
-                        .attr("x1", 0)
-                        .attr("y1", 5)
-                        .attr("x2", 18)
-                        .attr("y2", 5)
-                        .attr("stroke", ds.color)
-                        .attr("stroke-width", 2)
-                        .attr("stroke-dasharray", ds.dash || null);
-                    lg.append("text")
-                        .attr("x", 24)
-                        .attr("y", 9)
-                        .attr("fill", clrAxisText)
-                        .attr("font-size", "11px")
-                        .text(ds.label);
-                });
-            }
+    // Legend (split mode)
+    if (showSplit) {
+      const leg = g.append("g").attr("transform", "translate(8,4)");
+      datasets.forEach((ds, i) => {
+        const lg = leg
+          .append("g")
+          .attr("transform", `translate(${i * 170},0)`);
+        lg.append("line")
+          .attr("x1", 0)
+          .attr("y1", 5)
+          .attr("x2", 18)
+          .attr("y2", 5)
+          .attr("stroke", ds.color)
+          .attr("stroke-width", 2)
+          .attr("stroke-dasharray", ds.dash || null);
+        lg.append("text")
+          .attr("x", 24)
+          .attr("y", 9)
+          .attr("fill", clrAxisText)
+          .attr("font-size", "11px")
+          .text(ds.label);
+      });
+    }
 
-            // ── Hover / Tooltip ──────────────────────────────────────
-            const bisect = d3.bisector((d) => d.date).left;
+    // ── Hover / Tooltip ──────────────────────────────────────
+    const bisect = d3.bisector((d) => d.date).left;
 
-            const focusLine = g
-                .append("line")
-                .attr("stroke", clrFocusLine)
-                .attr("stroke-width", 1)
-                .attr("stroke-dasharray", "3,2")
-                .attr("y1", 0)
-                .attr("y2", iH)
-                .style("display", "none")
-                .style("pointer-events", "none");
+    const focusLine = g
+      .append("line")
+      .attr("stroke", clrFocusLine)
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "3,2")
+      .attr("y1", 0)
+      .attr("y2", iH)
+      .style("display", "none")
+      .style("pointer-events", "none");
 
-            const focusDots = datasets.map((ds) =>
-                g
-                    .append("circle")
-                    .attr("r", 4)
-                    .attr("fill", ds.color)
-                    .attr("stroke", clrSurface)
-                    .attr("stroke-width", 2)
-                    .style("display", "none")
-                    .style("pointer-events", "none"),
-            );
+    const focusDots = datasets.map((ds) =>
+      g
+        .append("circle")
+        .attr("r", 4)
+        .attr("fill", ds.color)
+        .attr("stroke", clrSurface)
+        .attr("stroke-width", 2)
+        .style("display", "none")
+        .style("pointer-events", "none"),
+    );
 
-            // Transparent overlay for mouse events
-            g.append("rect")
-                .attr("width", iW)
-                .attr("height", iH)
-                .attr("fill", "none")
-                .attr("pointer-events", "all")
-                .on("mousemove", function (event) {
-                    const [mx] = d3.pointer(event);
-                    const xDate = x.invert(mx);
+    // Transparent overlay for mouse events
+    g.append("rect")
+      .attr("width", iW)
+      .attr("height", iH)
+      .attr("fill", "none")
+      .attr("pointer-events", "all")
+      .on("mousemove", function (event) {
+        const [mx] = d3.pointer(event);
+        const xDate = x.invert(mx);
 
-                    focusLine
-                        .style("display", null)
-                        .attr("x1", mx)
-                        .attr("x2", mx);
+        focusLine
+          .style("display", null)
+          .attr("x1", mx)
+          .attr("x2", mx);
 
-                    let html = `<div class="tt-date">${FORMAT_DATE(xDate)}</div>`;
+        let html = `<div class="tt-date">${FORMAT_DATE(xDate)}</div>`;
 
-                    datasets.forEach((ds, i) => {
-                        const idx = bisect(ds.values, xDate, 1);
-                        const d0 = ds.values[idx - 1];
-                        const d1 = ds.values[idx];
-                        const d = !d0
-                            ? d1
-                            : !d1
-                              ? d0
-                              : xDate - d0.date > d1.date - xDate
-                                ? d1
-                                : d0;
+        datasets.forEach((ds, i) => {
+          const idx = bisect(ds.values, xDate, 1);
+          const d0 = ds.values[idx - 1];
+          const d1 = ds.values[idx];
+          const d = !d0
+            ? d1
+            : !d1
+              ? d0
+              : xDate - d0.date > d1.date - xDate
+                ? d1
+                : d0;
 
-                        if (d && d.rate != null) {
-                            focusDots[i]
-                                .style("display", null)
-                                .attr("cx", x(d.date))
-                                .attr("cy", y(d.rate));
-                            html +=
-                                `<div class="tt-row"><span class="tt-dot" style="background:${ds.color}"></span>` +
-                                `${ds.label}: <strong>${fmtRate(d.rate)}</strong></div>`;
-                        } else {
-                            focusDots[i].style("display", "none");
-                        }
-                    });
-
-                    tooltip.style("display", "block").html(html);
-
-                    const ttW = tooltip.node().offsetWidth;
-                    const lx = event.clientX + 14;
-                    tooltip
-                        .style(
-                            "left",
-                            (lx + ttW > window.innerWidth - 8
-                                ? event.clientX - ttW - 14
-                                : lx) + "px",
-                        )
-                        .style("top", Math.max(8, event.clientY - 52) + "px");
-                })
-                .on("mouseleave", () => {
-                    focusLine.style("display", "none");
-                    focusDots.forEach((d) => d.style("display", "none"));
-                    tooltip.style("display", "none");
-                });
-        }
-
-        /* ── Event Listeners ────────────────────────────────────── */
-        document
-            .getElementById("btn-back")
-            .addEventListener("click", () => showOverview());
-
-        document
-            .getElementById("chk-showall")
-            .addEventListener("change", (e) => {
-                showAll = e.target.checked;
-                page = 0;
-                renderTable();
-            });
-        showAll = document.getElementById("chk-showall").checked;
-
-        let debTimer;
-        document.getElementById("search").addEventListener("input", (e) => {
-            clearTimeout(debTimer);
-            debTimer = setTimeout(() => {
-                searchQ = e.target.value.trim();
-                applyFilter();
-                renderTable();
-            }, 180);
+          if (d && d.rate != null) {
+            focusDots[i]
+              .style("display", null)
+              .attr("cx", x(d.date))
+              .attr("cy", y(d.rate));
+            html +=
+              `<div class="tt-row"><span class="tt-dot" style="background:${ds.color}"></span>` +
+              `${ds.label}: <strong>${fmtRate(d.rate)}</strong></div>`;
+          } else {
+            focusDots[i].style("display", "none");
+          }
         });
 
-        document.getElementById("sel-plat").addEventListener("change", (e) => {
-            detail.platform = e.target.value;
-            detail.version = "all";
+        tooltip.style("display", "block").html(html);
 
-            const splitChk = document.getElementById("chk-split");
-            const isAll = detail.platform === "all";
-            splitChk.disabled = !isAll;
-            if (!isAll) {
-                splitChk.checked = false;
-                detail.split = false;
-            }
+        const ttW = tooltip.node().offsetWidth;
+        const lx = event.clientX + 14;
+        tooltip
+          .style(
+            "left",
+            (lx + ttW > window.innerWidth - 8
+              ? event.clientX - ttW - 14
+              : lx) + "px",
+          )
+          .style("top", Math.max(8, event.clientY - 52) + "px");
+      })
+      .on("mouseleave", () => {
+        focusLine.style("display", "none");
+        focusDots.forEach((d) => d.style("display", "none"));
+        tooltip.style("display", "none");
+      });
+  }
 
-            syncUrl("replace");
-            if (detail.data) {
-                updateVersionSelect();
-                redraw();
-            }
-        });
+  /* ── Event Listeners ────────────────────────────────────── */
+  document
+    .getElementById("btn-back")
+    .addEventListener("click", () => showOverview());
 
-        document.getElementById("sel-ver").addEventListener("change", (e) => {
-            detail.version = e.target.value;
-            syncUrl("replace");
-            if (detail.data) redraw();
-        });
+  document
+    .getElementById("chk-showall")
+    .addEventListener("change", (e) => {
+      showAll = e.target.checked;
+      page = 0;
+      renderTable();
+    });
+  showAll = document.getElementById("chk-showall").checked;
 
-        document.getElementById("chk-split").addEventListener("change", (e) => {
-            detail.split = e.target.checked;
-            syncUrl("replace");
-            if (detail.data) redraw();
-        });
+  let debTimer;
+  document.getElementById("search").addEventListener("input", (e) => {
+    clearTimeout(debTimer);
+    debTimer = setTimeout(() => {
+      searchQ = e.target.value.trim();
+      applyFilter();
+      renderTable();
+    }, 180);
+  });
 
-        /* ── Redraw chart on color-scheme change ────────────────── */
-        window
-            .matchMedia("(prefers-color-scheme: dark)")
-            .addEventListener("change", () => {
-                if (detail.data) redraw();
-            });
+  document.getElementById("sel-plat").addEventListener("change", (e) => {
+    detail.platform = e.target.value;
+    detail.version = "all";
 
-        /* ── Popstate (browser back / forward) ──────────────────── */
-        window.addEventListener("popstate", () => {
-            const p = new URLSearchParams(location.search);
-            const counter = p.get("counter");
-            if (counter) {
-                openDetail(
-                    counter,
-                    {
-                        platform: p.get("product") || "all",
-                        version: p.get("version") || "all",
-                        split: p.get("split") === "1",
-                    },
-                    true,
-                ); // noPush — URL is already correct
-            } else {
-                showOverview(true);
-            }
-        });
+    const splitChk = document.getElementById("chk-split");
+    const isAll = detail.platform === "all";
+    splitChk.disabled = !isAll;
+    if (!isAll) {
+      splitChk.checked = false;
+      detail.split = false;
+    }
 
-        /* ── Init ───────────────────────────────────────────────── */
-        (async () => {
-            try {
-                await loadOverview();
-                // Restore state from URL if present
-                const p = new URLSearchParams(location.search);
-                const counter = p.get("counter");
-                if (counter) {
-                    openDetail(
-                        counter,
-                        {
-                            platform: p.get("product") || "all",
-                            version: p.get("version") || "all",
-                            split: p.get("split") === "1",
-                        },
-                        true,
-                    ); // noPush — URL is already the source of truth
-                }
-            } catch (e) {
-                document.getElementById("ov-stats-text").textContent = "";
-                document.getElementById("table-card").innerHTML =
-                    `<div class="error-msg" style="margin:16px">Failed to load overview: ${esc(e.message)}</div>`;
-            }
-        })();
-    </script>
+    syncUrl("replace");
+    if (detail.data) {
+      updateVersionSelect();
+      redraw();
+    }
+  });
+
+  document.getElementById("sel-ver").addEventListener("change", (e) => {
+    detail.version = e.target.value;
+    syncUrl("replace");
+    if (detail.data) redraw();
+  });
+
+  document.getElementById("chk-split").addEventListener("change", (e) => {
+    detail.split = e.target.checked;
+    syncUrl("replace");
+    if (detail.data) redraw();
+  });
+
+  /* ── Redraw chart on color-scheme change ────────────────── */
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", () => {
+      if (detail.data) redraw();
+    });
+
+  /* ── Popstate (browser back / forward) ──────────────────── */
+  window.addEventListener("popstate", () => {
+    const p = new URLSearchParams(location.search);
+    const counter = p.get("counter");
+    if (counter) {
+      openDetail(
+        counter,
+        {
+          platform: p.get("product") || "all",
+          version: p.get("version") || "all",
+          split: p.get("split") === "1",
+        },
+        true,
+      ); // noPush — URL is already correct
+    } else {
+      showOverview(true);
+    }
+  });
+
+  /* ── Init ───────────────────────────────────────────────── */
+  (async () => {
+    try {
+      await loadOverview();
+      // Restore state from URL if present
+      const p = new URLSearchParams(location.search);
+      const counter = p.get("counter");
+      if (counter) {
+        openDetail(
+          counter,
+          {
+            platform: p.get("product") || "all",
+            version: p.get("version") || "all",
+            split: p.get("split") === "1",
+          },
+          true,
+        ); // noPush — URL is already the source of truth
+      }
+    } catch (e) {
+      document.getElementById("ov-stats-text").textContent = "";
+      document.getElementById("table-card").innerHTML =
+        `<div class="error-msg" style="margin:16px">Failed to load overview: ${esc(e.message)}</div>`;
+    }
+  })();
+</script>
+
 </html>
