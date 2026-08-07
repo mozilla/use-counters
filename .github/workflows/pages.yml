@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Check if data refresh needed
@@ -64,11 +64,11 @@ jobs:
           echo "--- $(date -u +"%Y-%m-%d %H:%M:%S UTC") ---" | tee -a static/data/import-log.txt
           cargo run --release -- artifact -o static/data 2>&1 | tee -a static/data/import-log.txt
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: "static/"
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
