@@ -2,11 +2,11 @@ use anyhow::{Context, Result};
 use futures::stream::{self, StreamExt};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::io::Seek;
-use std::{io::Write, path::Path};
+use std::{io::Write, path::Path, sync::Arc};
 use tempfile::NamedTempFile;
 
 use crate::ProcessingMode;
-use crate::aggregate::{self, AggregateMap};
+use crate::aggregate::{self, AggregateMap, Filter};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Dataset {
@@ -203,6 +203,7 @@ pub async fn fetch_and_aggregate_dataset(
     max_files: Option<usize>,
     cache_dir: Option<&Path>,
     processing_mode: ProcessingMode,
+    filter: &Arc<Filter>,
     aggregate: &mut AggregateMap,
 ) -> Result<String> {
     let last_updated_url = dataset.last_updated_url();
@@ -235,26 +236,30 @@ pub async fn fetch_and_aggregate_dataset(
     eprintln!("[{}] {} files to download", dataset.name(), file_urls.len());
 
     let total = file_urls.len();
-    let mut stream = stream::iter(file_urls.iter().enumerate().map(|(i, url)| async move {
-        eprintln!("[{}] {}/{} start ({})", dataset.name(), i + 1, total, url);
-        let file = perform_download(client, dataset, i, total, url, cache_dir).await?;
-        let aggregate: Result<AggregateMap> = tokio::task::spawn_blocking(move || {
-            let mut aggregate = AggregateMap::default();
-            let records = aggregate::aggregate_file_into(file, processing_mode, &mut aggregate)
-                .with_context(|| {
-                    format!("[{}] Error aggregating {}/{}", dataset.name(), i + 1, total)
-                })?;
-            eprintln!(
-                "[{}] {}/{} done ({} records)",
-                dataset.name(),
-                i + 1,
-                total,
-                records,
-            );
-            Ok(aggregate)
-        })
-        .await?;
-        anyhow::Ok(aggregate)
+    let mut stream = stream::iter(file_urls.iter().enumerate().map(|(i, url)| {
+        let filter = Arc::clone(filter);
+        async move {
+            eprintln!("[{}] {}/{} start ({})", dataset.name(), i + 1, total, url);
+            let file = perform_download(client, dataset, i, total, url, cache_dir).await?;
+            let aggregate: Result<AggregateMap> = tokio::task::spawn_blocking(move || {
+                let mut aggregate = AggregateMap::default();
+                let records =
+                    aggregate::aggregate_file_into(file, processing_mode, &filter, &mut aggregate)
+                        .with_context(|| {
+                            format!("[{}] Error aggregating {}/{}", dataset.name(), i + 1, total)
+                        })?;
+                eprintln!(
+                    "[{}] {}/{} done ({} records)",
+                    dataset.name(),
+                    i + 1,
+                    total,
+                    records,
+                );
+                Ok(aggregate)
+            })
+            .await?;
+            anyhow::Ok(aggregate)
+        }
     }))
     .buffer_unordered(jobs);
 

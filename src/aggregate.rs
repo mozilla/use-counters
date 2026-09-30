@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::BufRead};
+use std::{collections::HashMap, collections::HashSet, io::BufRead};
 
 use chrono::{Datelike, NaiveDate};
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,21 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct AggregateMap(HashMap<AggKey, Accum>);
+
+/// Allowed metrics, if non empty.
+#[derive(Debug, Default)]
+pub struct Filter(Option<HashSet<String>>);
+impl Filter {
+    /// Create a new filter that allows only the given metrics.
+    pub fn new(allowed_metrics: HashSet<String>) -> Self {
+        Self(Some(allowed_metrics))
+    }
+
+    /// Check if a metric is allowed by this filter.
+    pub fn is_allowed(&self, metric: &str) -> bool {
+        self.0.as_ref().is_none_or(|set| set.contains(metric))
+    }
+}
 
 /// Key used to group records for weekly aggregation.
 ///
@@ -50,8 +65,8 @@ pub struct AggregatedEntry {
 }
 
 /// Aggregate a flat list of records into weekly entries.
-pub fn aggregate_record(record: &SourceRecord, result: &mut AggregateMap) -> bool {
-    if record.metric.contains(".doc.") {
+pub fn aggregate_record(record: &SourceRecord, filter: &Filter, result: &mut AggregateMap) -> bool {
+    if record.metric.contains(".doc.") || !filter.is_allowed(&record.metric) {
         // Skip document-level metrics, which are not as useful as page metrics.
         return false;
     }
@@ -175,6 +190,7 @@ impl AggregateMap {
 pub fn aggregate_file_into(
     file: std::fs::File,
     processing_mode: ProcessingMode,
+    filter: &Filter,
     result: &mut AggregateMap,
 ) -> anyhow::Result<usize> {
     if processing_mode == ProcessingMode::Memory {
@@ -182,7 +198,7 @@ pub fn aggregate_file_into(
         let records: Vec<SourceRecord> = serde_json::from_reader(reader)?;
         let mut count = 0;
         for record in &records {
-            if aggregate_record(record, result) {
+            if aggregate_record(record, filter, result) {
                 count += 1;
             }
         }
@@ -195,7 +211,7 @@ pub fn aggregate_file_into(
     while let Some(r) = StreamDeserializer::new(IoRead::new(&mut reader)).next() {
         match r {
             Ok(record) => {
-                if aggregate_record(&record, result) {
+                if aggregate_record(&record, filter, result) {
                     count += 1;
                 }
                 // Go to the next comma or EOF (most likely just skip one character).

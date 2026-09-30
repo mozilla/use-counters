@@ -1,9 +1,11 @@
 mod aggregate;
 mod fetch;
 
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use futures::stream::{self, StreamExt};
 
@@ -65,6 +67,10 @@ struct AggregateArgs {
     #[arg(short, long, default_value = "memory")]
     mode: ProcessingMode,
 
+    /// Whether we should skip metrics not in the tree already.
+    #[arg(long)]
+    only_in_tree: bool,
+
     /// Only download the first N files per dataset (useful for testing).
     #[arg(long)]
     max_files: Option<usize>,
@@ -103,14 +109,50 @@ async fn main() -> Result<()> {
     }
 }
 
+async fn build_filter(
+    args: &AggregateArgs,
+    client: &reqwest::Client,
+) -> Result<Arc<aggregate::Filter>> {
+    if !args.only_in_tree {
+        return Ok(Arc::new(aggregate::Filter::default()));
+    }
+    let yaml = client
+            .get("https://raw.githubusercontent.com/mozilla-firefox/firefox/main/dom/base/use_counter_metrics.yaml")
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await
+            .context("Failed to fetch use_counter_metrics.yaml")?;
+    // Top-level keys are metric categories (e.g. `use.counter.page`), each
+    // mapping metric names to their definitions. Keys starting with `$`
+    // are schema metadata.
+    let categories: HashMap<String, serde_yaml::Value> =
+        serde_yaml::from_str(&yaml).context("Failed to parse use_counter_metrics.yaml")?;
+    let mut keys = HashSet::new();
+    for (category, metrics) in &categories {
+        if category.starts_with('$') {
+            continue;
+        }
+        let Some(metrics) = metrics.as_mapping() else {
+            continue;
+        };
+        for name in metrics.keys().filter_map(|k| k.as_str()) {
+            keys.insert(format!("{category}.{name}"));
+        }
+    }
+    eprintln!("{} metrics in tree", keys.len());
+    Ok(Arc::new(aggregate::Filter::new(keys)))
+}
+
 async fn fetch_command(args: AggregateArgs, client: reqwest::Client) -> Result<()> {
     let mut last_updated = vec![];
     let mut aggregate = AggregateMap::default();
-
+    let filter = build_filter(&args, &client).await?;
     if !args.input.is_empty() {
         for input in &args.input {
             let file = std::fs::File::open(input)?;
-            let records = aggregate::aggregate_file_into(file, args.mode, &mut aggregate)?;
+            let records = aggregate::aggregate_file_into(file, args.mode, &filter, &mut aggregate)?;
             eprintln!("[{}] {} records aggregated", input.display(), records);
         }
     } else {
@@ -128,6 +170,7 @@ async fn fetch_command(args: AggregateArgs, client: reqwest::Client) -> Result<(
                     args.max_files,
                     args.cache_dir.as_deref(),
                     args.mode,
+                    &filter,
                     &mut aggregate,
                 )
                 .await?,
