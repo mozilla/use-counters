@@ -1,13 +1,14 @@
 mod aggregate;
 mod fetch;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use futures::stream::{self, StreamExt};
+use saphyr::LoadableYamlNode;
 
 use crate::aggregate::AggregateMap;
 
@@ -127,10 +128,17 @@ async fn build_filter(
     // Top-level keys are metric categories (e.g. `use.counter.page`), each
     // mapping metric names to their definitions. Keys starting with `$`
     // are schema metadata.
-    let categories: HashMap<String, serde_yaml::Value> =
-        serde_yaml::from_str(&yaml).context("Failed to parse use_counter_metrics.yaml")?;
+    let docs = saphyr::Yaml::load_from_str(&yaml)
+        .context("Failed to parse use_counter_metrics.yaml")?;
+    let categories = docs
+        .first()
+        .and_then(|doc| doc.as_mapping())
+        .context("use_counter_metrics.yaml is not a mapping")?;
     let mut keys = HashSet::new();
-    for (category, metrics) in &categories {
+    for (category, metrics) in categories {
+        let Some(category) = category.as_str() else {
+            continue;
+        };
         if category.starts_with('$') {
             continue;
         }
