@@ -110,7 +110,7 @@ pub fn aggregate_record(record: &SourceRecord, filter: &Filter, result: &mut Agg
     let key = AggKey {
         metric: record.metric.clone(),
         platform: record.platform.clone(),
-        version_major: record.version_major.clone(),
+        version_major: record.version_major,
         iso_year: iso.year(),
         iso_week: iso.week(),
     };

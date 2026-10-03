@@ -128,17 +128,17 @@ async fn perform_download(
         let basename_start = url.rfind("/").map_or(0, |i| i + 1);
         cache_dir.join(&url[basename_start..])
     });
-    if let Some(ref cache_path) = cache_path {
-        if let Ok(f) = std::fs::File::open(cache_path) {
-            eprintln!(
-                "[{}] {}/{} loaded from cache {}",
-                dataset.name(),
-                i + 1,
-                total,
-                cache_path.display()
-            );
-            return Ok(f);
-        }
+    if let Some(ref cache_path) = cache_path
+        && let Ok(f) = std::fs::File::open(cache_path)
+    {
+        eprintln!(
+            "[{}] {}/{} loaded from cache {}",
+            dataset.name(),
+            i + 1,
+            total,
+            cache_path.display()
+        );
+        return Ok(f);
     }
     let mut temp_file = {
         if let Some(cache_dir) = cache_dir {
