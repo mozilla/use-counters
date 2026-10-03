@@ -53,6 +53,8 @@ jobs:
           toolchain: stable
       - name: Import data
         if: steps.check.outputs.refresh_needed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           mkdir -p static/data
           cargo run --release -- aggregate --only-in-tree -o static/data 2>&1 | tee static/data/import-log.txt

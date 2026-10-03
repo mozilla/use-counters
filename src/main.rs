@@ -117,19 +117,29 @@ async fn build_filter(
     if !args.only_in_tree {
         return Ok(Arc::new(aggregate::Filter::default()));
     }
-    let yaml = client
-            .get("https://raw.githubusercontent.com/mozilla-firefox/firefox/main/dom/base/use_counter_metrics.yaml")
-            .send()
-            .await?
-            .error_for_status()?
-            .text()
-            .await
-            .context("Failed to fetch use_counter_metrics.yaml")?;
+    // Use the contents API rather than raw.githubusercontent.com, and
+    // authenticate if we have a token (e.g. in GitHub Actions), since
+    // unauthenticated requests from shared runner IPs get rate-limited.
+    let mut request = client
+        .get("https://api.github.com/repos/mozilla-firefox/firefox/contents/dom/base/use_counter_metrics.yaml")
+        .header(reqwest::header::ACCEPT, "application/vnd.github.raw");
+    if let Ok(token) = std::env::var("GITHUB_TOKEN")
+        && !token.is_empty()
+    {
+        request = request.bearer_auth(token);
+    }
+    let yaml = request
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await
+        .context("Failed to fetch use_counter_metrics.yaml")?;
     // Top-level keys are metric categories (e.g. `use.counter.page`), each
     // mapping metric names to their definitions. Keys starting with `$`
     // are schema metadata.
-    let docs = saphyr::Yaml::load_from_str(&yaml)
-        .context("Failed to parse use_counter_metrics.yaml")?;
+    let docs =
+        saphyr::Yaml::load_from_str(&yaml).context("Failed to parse use_counter_metrics.yaml")?;
     let categories = docs
         .first()
         .and_then(|doc| doc.as_mapping())
